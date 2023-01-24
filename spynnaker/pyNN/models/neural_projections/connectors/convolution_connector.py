@@ -215,7 +215,7 @@ class ConvolutionConnector(AbstractConnector):
             shape = (post_pool_shape // self.__pool_stride) + 1
 
         kernel_shape = numpy.array(self.__kernel_weights.shape)
-        post_shape = (shape - (kernel_shape - 1) +
+        post_shape = (shape - (kernel_shape - self.__strides) +
                       (2 * self.__padding_shape))
 
         return numpy.clip(
