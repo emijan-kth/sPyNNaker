@@ -261,6 +261,7 @@ static inline index_t synapse_row_get_ring_buffer_index(
         uint32_t simulation_timestep, uint32_t synapse_type_index,
         uint32_t neuron_index, uint32_t synapse_type_index_bits,
         uint32_t synapse_index_bits, uint32_t synapse_delay_mask) {
+    log_debug("yyyyy %u, %u, %u, %u, %u, %u", simulation_timestep, synapse_type_index, neuron_index, synapse_type_index_bits, synapse_index_bits, synapse_delay_mask);
     return ((simulation_timestep & synapse_delay_mask) << synapse_type_index_bits)
             | (synapse_type_index << synapse_index_bits)
             | neuron_index;

@@ -323,7 +323,7 @@ class ConvolutionConnector(AbstractConnector):
             coords //= self.__pool_stride
 
         kernel_shape = numpy.array(self.__kernel_weights.shape)
-        coords = coords - kernel_shape // 2 + self.__padding_shape
+        coords = coords - (kernel_shape - 1) + self.__padding_shape
         coords //= self.__strides
         return coords
 

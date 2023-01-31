@@ -150,13 +150,14 @@ static inline int16_t recip_multiply(int16_t integer, int16_t recip) {
 //! padding, kernel, strides from Convolutional Neural Networks
 //! because of the way we're looping through the kernel, we divide the kernel
 //! shape by 2.
-static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre,
-        int16_t half_kh, int16_t half_kw) {
+static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre, int16_t kernel_height, int16_t kernel_width) {
     lc_coord_t post = pre;
     post.col = recip_multiply(post.col, connector->recip_pool_strides.col);
     post.row = recip_multiply(post.row, connector->recip_pool_strides.row);
-    post.col = post.col - half_kw + connector->padding.width;
-    post.row = post.row - half_kh + connector->padding.height;
+    // post.col = post.col - half_kw + connector->padding.width;
+    // post.row = post.row - half_kh + connector->padding.height;
+    post.col += -kernel_width + connector->recip_strides.col + connector->padding.width;
+    post.row += -kernel_height + connector->recip_strides.row + connector->padding.height;
     post.col = recip_multiply(post.col, connector->recip_strides.col);
     post.row = recip_multiply(post.row, connector->recip_strides.row);
     return post;
@@ -169,21 +170,24 @@ static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre,
 static inline void do_convolution_operation(
         uint32_t time, lc_coord_t pre_coord, connector *connector,
         uint16_t *ring_buffers) {
-    int32_t half_kh = connector->kernel.height / 2;
-    int32_t half_kw = connector->kernel.width / 2;
-    lc_coord_t post_coord = map_pre_to_post(connector, pre_coord, half_kh, half_kw);
+    // int32_t half_kh = connector->kernel.height / 2;
+    // int32_t half_kw = connector->kernel.width / 2;
+    lc_coord_t post_coord = map_pre_to_post(connector, pre_coord, connector->kernel.height, connector->kernel.width);
     log_debug("pre row %d, col %d AS post row %d, col %d",
             pre_coord.row, pre_coord.col, post_coord.row, post_coord.col);
 
     int32_t kw = connector->kernel.width;
-    for (int32_t r = -half_kh, kr = 0; r <= half_kh; r++, kr++) {
-        int32_t tmp_row = post_coord.row + r;
+    for (int32_t kr = 0, tmp_row = post_coord.row; kr < connector->kernel.height; kr += connector->recip_strides.row, tmp_row++) {
+        log_debug("xxx1: kr = %u, tmp_row = %u", kr, tmp_row);
+
         if ((tmp_row < config.post_start.row) || (tmp_row > config.post_end.row)) {
+            log_debug("xxx1: tmp_row outside");
             continue;
         }
-        for (int32_t c = -half_kw, kc = 0; c <= half_kw; c++, kc++) {
-            int32_t tmp_col = post_coord.col + c;
+        for (int32_t kc = 0, tmp_col = post_coord.col; kc < connector->kernel.width; kc += connector->recip_strides.col, tmp_col++) {
+            log_debug("xxx2: kc = %u, tmp_col = %u", kc, tmp_col);
             if ((tmp_col < config.post_start.col) || (tmp_col > config.post_end.col)) {
+                log_debug("xxx1: tmp_col outside");
                 continue;
             }
 
@@ -192,8 +196,10 @@ static inline void do_convolution_operation(
                 ((tmp_row - config.post_start.row) * config.post_shape.width)
                     + (tmp_col - config.post_start.col);
             uint32_t k = (kr * kw) + kc;
+            log_debug("xxx2: weight index = %u", k);
             lc_weight_t weight = connector->weights[k];
             if (weight == 0) {
+                log_debug("xxx2: zero weight");
                 continue;
             }
             uint32_t rb_index = 0;
