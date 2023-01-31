@@ -33,7 +33,7 @@ SOURCE_KEY_INFO_WORDS = 7
 
 #: The number of 16-bit shorts in the connector struct,
 #: ignoring the source_key_info struct and the weights (which are dynamic)
-CONNECTOR_CONFIG_SHORTS = 12
+CONNECTOR_CONFIG_SHORTS = 14
 
 
 class ConvolutionConnector(AbstractConnector):
@@ -383,6 +383,10 @@ class ConvolutionConnector(AbstractConnector):
         spec.write_value(self.__recip(self.__strides[1]),
                          data_type=DataType.INT16)
         spec.write_value(self.__recip(self.__strides[0]),
+                         data_type=DataType.INT16)
+        spec.write_value(self.__strides[1],
+                         data_type=DataType.INT16)
+        spec.write_value(self.__strides[0],
                          data_type=DataType.INT16)
         spec.write_value(self.__recip(ps_y), data_type=DataType.INT16)
         spec.write_value(self.__recip(ps_x), data_type=DataType.INT16)
