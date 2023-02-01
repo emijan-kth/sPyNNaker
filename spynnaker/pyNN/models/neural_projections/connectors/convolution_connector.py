@@ -33,7 +33,7 @@ SOURCE_KEY_INFO_WORDS = 7
 
 #: The number of 16-bit shorts in the connector struct,
 #: ignoring the source_key_info struct and the weights (which are dynamic)
-CONNECTOR_CONFIG_SHORTS = 12
+CONNECTOR_CONFIG_SHORTS = 14
 
 
 class ConvolutionConnector(AbstractConnector):
@@ -215,11 +215,10 @@ class ConvolutionConnector(AbstractConnector):
             shape = (post_pool_shape // self.__pool_stride) + 1
 
         kernel_shape = numpy.array(self.__kernel_weights.shape)
-        post_shape = (shape - (kernel_shape - self.__strides) +
-                      (2 * self.__padding_shape))
+        post_shape = shape - kernel_shape + (2 * self.__padding_shape)
 
         return numpy.clip(
-            post_shape // self.__strides, 1, numpy.inf).astype('int')
+            post_shape // self.__strides + 1, 1, numpy.inf).astype('int')
 
     @overrides(AbstractConnector.validate_connection)
     def validate_connection(self, application_edge, synapse_info):
@@ -230,7 +229,9 @@ class ConvolutionConnector(AbstractConnector):
                 "The ConvolutionConnector only works where the Populations"
                 " of a Projection are both 2D.  Please ensure that both the"
                 " Populations use a Grid2D structure.")
-        expected_post_shape = tuple(self.get_post_shape(pre.atoms_shape))
+        pre_shape = pre.atoms_shape
+        expected_post_shape = tuple(self.get_post_shape((pre_shape[1], pre_shape[0])))
+        expected_post_shape = expected_post_shape[1], expected_post_shape[0]
         if expected_post_shape != post.atoms_shape:
             raise ConfigurationException(
                 f"With a source population with shape {pre.atoms_shape}, "
@@ -323,7 +324,7 @@ class ConvolutionConnector(AbstractConnector):
             coords //= self.__pool_stride
 
         kernel_shape = numpy.array(self.__kernel_weights.shape)
-        coords = coords - kernel_shape // 2 + self.__padding_shape
+        coords = coords - (kernel_shape - 1) + self.__padding_shape
         coords //= self.__strides
         return coords
 
@@ -343,9 +344,9 @@ class ConvolutionConnector(AbstractConnector):
             weight_scales):
         # Get info about things
         kernel_shape = self.__kernel_weights.shape
-        ps_x, ps_y = 1, 1
+        ps_y, ps_x = 1, 1
         if self.__pool_stride is not None:
-            ps_x, ps_y = self.__pool_stride
+            ps_y, ps_x = self.__pool_stride
 
         # Write source key info
         spec.write_value(key, data_type=DataType.UINT32)
@@ -376,13 +377,17 @@ class ConvolutionConnector(AbstractConnector):
         # Write remaining connector details
         spec.write_value(start[1], data_type=DataType.INT16)
         spec.write_value(start[0], data_type=DataType.INT16)
-        spec.write_value(kernel_shape[1], data_type=DataType.INT16)
         spec.write_value(kernel_shape[0], data_type=DataType.INT16)
-        spec.write_value(self.__padding_shape[1], data_type=DataType.INT16)
+        spec.write_value(kernel_shape[1], data_type=DataType.INT16)
         spec.write_value(self.__padding_shape[0], data_type=DataType.INT16)
+        spec.write_value(self.__padding_shape[1], data_type=DataType.INT16)
+        spec.write_value(self.__recip(self.__strides[0]),
+                         data_type=DataType.INT16)
         spec.write_value(self.__recip(self.__strides[1]),
                          data_type=DataType.INT16)
-        spec.write_value(self.__recip(self.__strides[0]),
+        spec.write_value(self.__strides[0],
+                         data_type=DataType.INT16)
+        spec.write_value(self.__strides[1],
                          data_type=DataType.INT16)
         spec.write_value(self.__recip(ps_y), data_type=DataType.INT16)
         spec.write_value(self.__recip(ps_x), data_type=DataType.INT16)
