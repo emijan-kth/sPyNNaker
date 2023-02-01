@@ -162,8 +162,6 @@ static inline int16_t recip_multiply(int16_t integer, int16_t recip) {
 static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre, lc_coord_t *start_i) {
     pre.col = recip_multiply(pre.col, connector->recip_pool_strides.col);
     pre.row = recip_multiply(pre.row, connector->recip_pool_strides.row);
-    // post.col = post.col - half_kw + connector->padding.width;
-    // post.row = post.row - half_kh + connector->padding.height;
     pre.col += connector->padding.width;
     pre.row += connector->padding.height;
     lc_coord_t post;
@@ -181,8 +179,6 @@ static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre, l
 static inline void do_convolution_operation(
         uint32_t time, lc_coord_t pre_coord, connector *connector,
         uint16_t *ring_buffers) {
-    // int32_t half_kh = connector->kernel.height / 2;
-    // int32_t half_kw = connector->kernel.width / 2;
     lc_coord_t start_i;
     log_debug("kernel height: %d, kernel width: %d, padding height: %d, padding width: %d, strides row: %d, strides col: %d", connector->kernel.height, connector->kernel.width, connector->padding.height, connector->padding.width, connector->strides.row, connector->strides.col);
     lc_coord_t post_coord = map_pre_to_post(connector, pre_coord, &start_i);
@@ -192,17 +188,17 @@ static inline void do_convolution_operation(
     int32_t kw = connector->kernel.width;
     for (int32_t i_row = start_i.row, tmp_row = post_coord.row; i_row < connector->kernel.height; i_row += connector->strides.row, --tmp_row) {
         int32_t kr = connector->kernel.height - 1 - i_row;
-        log_debug("xxx1: i_row = %u, kr = %u, tmp_row = %u", i_row, kr, tmp_row);
+        log_debug("i_row = %u, kr = %u, tmp_row = %u", i_row, kr, tmp_row);
 
         if ((tmp_row < config.post_start.row) || (tmp_row > config.post_end.row)) {
-            log_debug("xxx1: tmp_row outside");
+            log_debug("tmp_row outside");
             continue;
         }
         for (int32_t i_col = start_i.col, tmp_col = post_coord.col; i_col < connector->kernel.width; i_col += connector->strides.col, --tmp_col) {
             int32_t kc = connector->kernel.width - 1 - i_col;
-            log_debug("xxx2: i_col = %u, kc = %u, tmp_col = %u", i_col, kc, tmp_col);
+            log_debug("i_col = %u, kc = %u, tmp_col = %u", i_col, kc, tmp_col);
             if ((tmp_col < config.post_start.col) || (tmp_col > config.post_end.col)) {
-                log_debug("xxx1: tmp_col outside");
+                log_debug("tmp_col outside");
                 continue;
             }
 
@@ -211,10 +207,10 @@ static inline void do_convolution_operation(
                 ((tmp_row - config.post_start.row) * config.post_shape.width)
                     + (tmp_col - config.post_start.col);
             uint32_t k = (kr * kw) + kc;
-            log_debug("xxx2: weight index = %u", k);
+            log_debug("weight index = %u", k);
             lc_weight_t weight = connector->weights[k];
             if (weight == 0) {
-                log_debug("xxx2: zero weight");
+                log_debug("zero weight");
                 continue;
             }
             uint32_t rb_index = 0;
