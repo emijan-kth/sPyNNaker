@@ -184,6 +184,7 @@ static inline void do_convolution_operation(
     // int32_t half_kh = connector->kernel.height / 2;
     // int32_t half_kw = connector->kernel.width / 2;
     lc_coord_t start_i;
+    log_debug("kernel height: %d, kernel width: %d, padding height: %d, padding width: %d, strides row: %d, strides col: %d", connector->kernel.height, connector->kernel.width, connector->padding.height, connector->padding.width, connector->strides.row, connector->strides.col);
     lc_coord_t post_coord = map_pre_to_post(connector, pre_coord, &start_i);
     log_debug("pre row %d, col %d AS post row %d, col %d",
             pre_coord.row, pre_coord.col, post_coord.row, post_coord.col);
