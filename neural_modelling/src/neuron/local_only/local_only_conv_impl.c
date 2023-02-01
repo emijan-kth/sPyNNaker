@@ -159,20 +159,19 @@ static inline int16_t recip_multiply(int16_t integer, int16_t recip) {
 //! padding, kernel, strides from Convolutional Neural Networks
 //! because of the way we're looping through the kernel, we divide the kernel
 //! shape by 2.
-static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre, int16_t kernel_height, int16_t kernel_width, lc_coord_t *start_i) {
-    lc_coord_t post = pre;
-    post.col = recip_multiply(post.col, connector->recip_pool_strides.col);
-    post.row = recip_multiply(post.row, connector->recip_pool_strides.row);
+static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre, lc_coord_t *start_i) {
+    pre.col = recip_multiply(pre.col, connector->recip_pool_strides.col);
+    pre.row = recip_multiply(pre.row, connector->recip_pool_strides.row);
     // post.col = post.col - half_kw + connector->padding.width;
     // post.row = post.row - half_kh + connector->padding.height;
-    post.col += connector->padding.width;
-    post.row += connector->padding.height;
-    lc_coord_t result_post;
-    result_post.col = recip_multiply(post.col, connector->recip_strides.col);
-    result_post.row = recip_multiply(post.row, connector->recip_strides.row);
-    start_i->col = calc_remainder(post.col, connector->strides.col, result_post.col);
-    start_i->row = calc_remainder(post.row, connector->strides.row, result_post.row);
-    return result_post;
+    pre.col += connector->padding.width;
+    pre.row += connector->padding.height;
+    lc_coord_t post;
+    post.col = recip_multiply(pre.col, connector->recip_strides.col);
+    post.row = recip_multiply(pre.row, connector->recip_strides.row);
+    start_i->col = calc_remainder(pre.col, connector->strides.col, post.col);
+    start_i->row = calc_remainder(pre.row, connector->strides.row, post.row);
+    return post;
 }
 
 
@@ -185,7 +184,7 @@ static inline void do_convolution_operation(
     // int32_t half_kh = connector->kernel.height / 2;
     // int32_t half_kw = connector->kernel.width / 2;
     lc_coord_t start_i;
-    lc_coord_t post_coord = map_pre_to_post(connector, pre_coord, connector->kernel.height, connector->kernel.width, &start_i);
+    lc_coord_t post_coord = map_pre_to_post(connector, pre_coord, &start_i);
     log_debug("pre row %d, col %d AS post row %d, col %d",
             pre_coord.row, pre_coord.col, post_coord.row, post_coord.col);
 
