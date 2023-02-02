@@ -155,10 +155,7 @@ static inline int16_t recip_multiply(int16_t integer, int16_t recip) {
     return (int16_t) ((i * r) >> RECIP_FRACT_BITS);
 }
 
-//! \brief Do a mapping from pre to post 2D spaces, we use the standard
-//! padding, kernel, strides from Convolutional Neural Networks
-//! because of the way we're looping through the kernel, we divide the kernel
-//! shape by 2.
+//! \brief Do a mapping from pre to post 2D spaces
 static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre, lc_coord_t *start_i) {
     pre.col = recip_multiply(pre.col, connector->recip_pool_strides.col);
     pre.row = recip_multiply(pre.row, connector->recip_pool_strides.row);
