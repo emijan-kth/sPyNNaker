@@ -1,4 +1,4 @@
-# Multiple fixes to convolutions in SpiNNaker/sPyNNaker*
+# Multiple fixes to convolutions in SpiNNaker/sPyNNaker
 
 ## Overview
 
