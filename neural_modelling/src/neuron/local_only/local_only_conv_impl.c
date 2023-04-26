@@ -64,6 +64,7 @@ typedef struct {
     lc_coord_t recip_pool_strides;
     uint16_t positive_synapse_type;
     uint16_t negative_synapse_type;
+    uint16_t presynaptic_trace_synapse_type;
     union {
         uint32_t delay;
         struct {
@@ -236,6 +237,23 @@ static inline void do_convolution_operation(
                 uint32_t post_index =
                     ((tmp_row - config->post_start.row) * config->post_shape.width)
                         + (tmp_col - config->post_start.col);
+
+                if (connector->presynaptic_trace_synapse_type != 0xffff) {
+                    uint32_t rb_index = synapse_row_get_ring_buffer_index(time + delay,
+                        connector->presynaptic_trace_synapse_type, post_index,
+                        synapse_type_index_bits, synapse_index_bits,
+                        synapse_delay_mask);
+                    log_debug("Updating ring_buffers[%u] for post neuron %u = %u, %u, with presynaptic trace",
+                            rb_index, post_index, tmp_col, tmp_row);
+                    // Add one to current ring buffer value, avoiding saturation
+                    uint32_t accumulation = ring_buffers[rb_index] + 1;
+                    uint32_t sat_test = accumulation & 0x10000;
+                    if (sat_test) {
+                        accumulation = sat_test - 1;
+                    }
+                    ring_buffers[rb_index] = accumulation;
+                }
+
                 uint32_t k = (kr * kw) + kc;
                 log_debug("weight index = %u", k);
                 lc_weight_t weight = connector_weights[k];

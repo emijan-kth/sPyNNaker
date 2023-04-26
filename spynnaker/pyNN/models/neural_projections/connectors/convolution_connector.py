@@ -34,7 +34,7 @@ SOURCE_KEY_INFO_WORDS = 7
 #: The number of 16-bit shorts in the connector struct,
 #: ignoring the source_key_info struct but including the delay and the
 #: 32-bit weight index
-CONNECTOR_CONFIG_SHORTS = 20
+CONNECTOR_CONFIG_SHORTS = 21
 
 
 class ConvolutionConnector(AbstractConnector):
@@ -54,6 +54,7 @@ class ConvolutionConnector(AbstractConnector):
         "__pool_stride",
         "__positive_receptor_type",
         "__negative_receptor_type",
+        "__presynaptic_trace_receptor_type",
         "__num_multisynaptic_connections",
         "__multisynaptic_delay_min"
     ]
@@ -62,6 +63,7 @@ class ConvolutionConnector(AbstractConnector):
                  padding=None, pool_shape=None, pool_stride=None,
                  positive_receptor_type="excitatory",
                  negative_receptor_type="inhibitory",
+                 presynaptic_trace_receptor_type=None,
                  num_multisynaptic_connections=1,
                  multisynaptic_delay_min=0,
                  safe=True,
@@ -121,6 +123,9 @@ class ConvolutionConnector(AbstractConnector):
         :param str negative_receptor_type:
             The receptor type to add the negative weights to.  By default this
             is "``inhibitory``".
+        :param str presynaptic_trace_receptor_type:
+            The receptor type for presynaptic trace.  By default this
+            is None.
         :param bool safe: (ignored)
         :param bool verbose: (ignored)
         :param callable callback: (ignored)
@@ -143,6 +148,7 @@ class ConvolutionConnector(AbstractConnector):
 
         self.__positive_receptor_type = positive_receptor_type
         self.__negative_receptor_type = negative_receptor_type
+        self.__presynaptic_trace_receptor_type = presynaptic_trace_receptor_type
 
         self.__num_multisynaptic_connections = num_multisynaptic_connections
         if num_multisynaptic_connections != 1:
@@ -157,6 +163,10 @@ class ConvolutionConnector(AbstractConnector):
     @property
     def negative_receptor_type(self):
         return self.__negative_receptor_type
+
+    @property
+    def presynaptic_trace_receptor_type(self):
+        return self.__presynaptic_trace_receptor_type
 
     @property
     def kernel_weights(self):
@@ -267,6 +277,12 @@ class ConvolutionConnector(AbstractConnector):
             raise ConfigurationException(
                 "The post population doesn't have a synaptic receptor type of"
                 f" {self.__negative_receptor_type}")
+        if self.__presynaptic_trace_receptor_type is not None and \
+            post.get_synapse_id_by_target(
+                self.__presynaptic_trace_receptor_type) is None:
+            raise ConfigurationException(
+                "The post population doesn't have a presynaptic trace receptor type of"
+                f" {self.__presynaptic_trace_receptor_type}")
 
     @overrides(AbstractConnector.get_delay_minimum)
     def get_delay_minimum(self, synapse_info):
@@ -453,6 +469,9 @@ class ConvolutionConnector(AbstractConnector):
             self.__positive_receptor_type)
         neg_synapse_type = app_edge.post_vertex.get_synapse_id_by_target(
             self.__negative_receptor_type)
+        presynaptic_trace_synapse_type = app_edge.post_vertex.get_synapse_id_by_target(
+            self.__presynaptic_trace_receptor_type)
+        if presynaptic_trace_synapse_type is None: presynaptic_trace_synapse_type = 0xffff
         short_values = numpy.array([
             start[1], start[0],
             kernel_shape[0], kernel_shape[1],
@@ -460,7 +479,8 @@ class ConvolutionConnector(AbstractConnector):
             self.__recip(self.__strides[0]), self.__recip(self.__strides[1]),
             self.__strides[0], self.__strides[1],
             self.__recip(ps_y), self.__recip(ps_x),
-            pos_synapse_type, neg_synapse_type], dtype="uint16")
+            pos_synapse_type, neg_synapse_type, presynaptic_trace_synapse_type],
+            dtype="uint16")
 
         # Work out delay
         delay_step = (delay *
