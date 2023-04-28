@@ -98,6 +98,7 @@ static inline void synapse_types_shape_input(
         synapse_types_t *parameters) {
 	parameters->exc = ZERO;
 	parameters->inh = ZERO;
+	exp_shaping(&parameters->trace);
 }
 
 //! \brief adds the inputs for a give timer period to a given neuron that is
@@ -115,6 +116,9 @@ static inline void synapse_types_add_neuron_input(
     	break;
     case INHIBITORY:
     	parameters->inh += input;
+    	break;
+    case TRACE:
+    	add_input_exp(&parameters->trace, input);
     	break;
     }
 }
