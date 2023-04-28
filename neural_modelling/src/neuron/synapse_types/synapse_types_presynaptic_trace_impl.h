@@ -39,11 +39,12 @@
 //! Number of excitatory receptors
 #define NUM_EXCITATORY_RECEPTORS 1
 //! Number of inhibitory receptors
-#define NUM_INHIBITORY_RECEPTORS 1
+#define NUM_INHIBITORY_RECEPTORS 2
 
 #include <debug.h>
 #include <common/neuron-typedefs.h>
 #include "synapse_types.h"
+#include "exp_synapse_utils.h"
 
 //---------------------------------------
 // Synapse parameters
@@ -51,19 +52,22 @@
 struct synapse_types_params_t {
     input_t exc;
     input_t inh;
+    exp_params_t trace;
+    REAL time_step_ms;
 };
 
-//! Delta synapses support just a single excitatory and inhibitory input each
 struct synapse_types_t {
     input_t exc; //!< Excitatory synaptic input
     input_t inh; //!< Inhibitory synaptic input
+    exp_state_t trace; //!< Presynaptic trace input
 };
 
 //! The supported synapse type indices
 typedef enum {
     EXCITATORY, //!< Excitatory synaptic input
     INHIBITORY, //!< Inhibitory synaptic input
-} synapse_delta_input_buffer_regions;
+    TRACE, //!< Presynaptic trace input
+} synapse_presynaptic_trace_input_buffer_regions;
 
 //---------------------------------------
 // Synapse shaping inline implementation
@@ -73,11 +77,13 @@ static inline void synapse_types_initialise(synapse_types_t *state,
 		synapse_types_params_t *params, UNUSED uint32_t n_steps_per_timestep) {
 	state->exc = params->exc;
 	state->inh = params->inh;
+    decay_and_init(&state->trace, &params->trace, params->time_step_ms, n_steps_per_timestep);
 }
 
 static void synapse_types_save_state(synapse_types_t *state, synapse_types_params_t *params) {
 	params->exc = state->exc;
 	params->inh = state->inh;
+	params->trace.init_input = state->trace.synaptic_input_value;
 }
 
 //! \brief decays the stuff thats sitting in the input buffers as these have not
