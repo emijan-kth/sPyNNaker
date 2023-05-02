@@ -16,20 +16,29 @@ from spinn_utilities.overrides import overrides
 from data_specification.enums import DataType
 from .abstract_synapse_type import AbstractSynapseType
 from spynnaker.pyNN.utilities.struct import Struct
+from spynnaker.pyNN.data import SpynnakerDataView
 
 ISYN_EXC = "isyn_exc"
 ISYN_INH = "isyn_inh"
+TAU_SYN_TRACE = 'tau_syn_trace'
+ISYN_TRACE = "isyn_trace"
+TIMESTEP_MS = "timestep_ms"
+
 
 
 class SynapseTypePresynapticTrace(AbstractSynapseType):
     """
-    This represents a synapse type with two delta synapses.
+    This represents a synapse type with two delta synapses and
+    a presynaptic trace.
     """
     __slots__ = [
         "__isyn_exc",
-        "__isyn_inh"]
+        "__isyn_inh",
+        "__tau_syn_trace",
+        "__isyn_trace",
+        ]
 
-    def __init__(self, isyn_exc, isyn_inh):
+    def __init__(self, isyn_exc, isyn_inh, tau_syn_trace, isyn_trace):
         """
         :param isyn_exc: :math:`I^{syn}_e`
         :type isyn_exc: float or iterable(float) or
@@ -37,24 +46,38 @@ class SynapseTypePresynapticTrace(AbstractSynapseType):
         :param isyn_inh: :math:`I^{syn}_i`
         :type isyn_inh: float or iterable(float) or
             ~spynnaker.pyNN.RandomDistribution or (mapping) function
+        :param tau_syn_trace: :math:`\tau^{syn}_{trace}`
+        :type tau_syn_trace: float or iterable(float) or
+            ~spynnaker.pyNN.RandomDistribution or (mapping) function
+        :param isyn_trace: :math:`I^{syn}_{trace}`
+        :type isyn_trace: float or iterable(float) or
+            ~spynnaker.pyNN.RandomDistribution or (mapping) function
         """
         super().__init__(
             [Struct([
                 (DataType.S1615, ISYN_EXC),  # isyn_exc
                 (DataType.S1615, ISYN_INH),  # isyn_inh
+                (DataType.S1615, TAU_SYN_TRACE),
+                (DataType.S1615, ISYN_TRACE),
+                (DataType.S1615, TIMESTEP_MS),
                 ])],  
-            {ISYN_EXC: "", ISYN_EXC: ""})
+            {ISYN_EXC: "", ISYN_EXC: "", TAU_SYN_TRACE: 'mV', ISYN_TRACE: ""})
         self.__isyn_exc = isyn_exc
         self.__isyn_inh = isyn_inh
+        self.__tau_syn_trace = tau_syn_trace
+        self.__isyn_trace = isyn_trace
 
     @overrides(AbstractSynapseType.add_parameters)
     def add_parameters(self, parameters):
-        pass
+        parameters[TAU_SYN_TRACE] = self.__tau_syn_trace
+        parameters[TIMESTEP_MS] = (
+            SpynnakerDataView.get_simulation_time_step_ms())
 
     @overrides(AbstractSynapseType.add_state_variables)
     def add_state_variables(self, state_variables):
         state_variables[ISYN_EXC] = self.__isyn_exc
         state_variables[ISYN_INH] = self.__isyn_inh
+        state_variables[ISYN_TRACE] = self.__isyn_trace
 
     @overrides(AbstractSynapseType.get_n_synapse_types)
     def get_n_synapse_types(self):
@@ -81,3 +104,11 @@ class SynapseTypePresynapticTrace(AbstractSynapseType):
     @property
     def isyn_inh(self):
         return self.__isyn_inh
+
+    @property
+    def tau_syn_trace(self):
+        return self.__tau_syn_trace
+
+    @property
+    def isyn_trace(self):
+        return self.__isyn_trace

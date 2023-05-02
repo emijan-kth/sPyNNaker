@@ -142,6 +142,7 @@ static inline input_t *synapse_types_get_excitatory_input(
 static inline input_t *synapse_types_get_inhibitory_input(
         input_t *inhibitory_response, synapse_types_t *parameters) {
     inhibitory_response[0] = parameters->inh;
+    inhibitory_response[1] = parameters->trace.synaptic_input_value;
     return &inhibitory_response[0];
 }
 
@@ -157,6 +158,8 @@ static inline const char *synapse_types_get_type_char(
         return "X";
     case INHIBITORY:
         return "I";
+    case TRACE:
+        return "T";
     default:
         log_debug("did not recognise synapse type %i", synapse_type_index);
         return "?";
@@ -169,14 +172,18 @@ static inline const char *synapse_types_get_type_char(
 //! \param[in] parameters: the pointer to the parameters to use
 static inline void synapse_types_print_input(
         synapse_types_t *parameters) {
-    io_printf(IO_BUF, "%12.6k - %12.6k",
-            parameters->exc, parameters->inh);
+    io_printf(IO_BUF, "%12.6k - %12.6k - %12.6k",
+            parameters->exc, parameters->inh, parameters->trace.synaptic_input_value);
 }
 
 //! \brief printer call
 //! \param[in] parameters: the pointer to the parameters to print
 static inline void synapse_types_print_parameters(
         UNUSED synapse_types_t *parameters) {
+    log_info("trace_decay  = %11.4k\n", parameters->trace.decay);
+    log_info("trace_init   = %11.4k\n", parameters->trace.init);
+    log_info("gsyn_trace_initial_value = %11.4k\n",
+            parameters->trace.synaptic_input_value);
 }
 
-#endif  // _SYNAPSE_TYPES_DELTA_IMPL_H_
+#endif  // _SYNAPSE_TYPES_PRESYNAPTIC_TRACE_IMPL_H_

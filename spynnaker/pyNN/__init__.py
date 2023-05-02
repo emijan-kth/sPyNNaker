@@ -164,7 +164,7 @@ __all__ = [
     'LastNeuronSelection', 'RandomSelection',
     'DistanceDependentFormation', 'RandomByWeightElimination',
     # neuron stuff
-    'IF_cond_exp', 'IF_curr_exp', "IF_curr_alpha", "IF_curr_delta",
+    'IF_cond_exp', 'IF_curr_exp', "IF_curr_alpha", "IF_curr_delta", "IF_curr_presynaptic_trace",
     'Izhikevich', 'SpikeSourceArray', 'SpikeSourcePoisson',
     # pops
     'Assembly', 'Population', 'PopulationView',
