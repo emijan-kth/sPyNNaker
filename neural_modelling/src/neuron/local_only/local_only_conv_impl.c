@@ -65,6 +65,7 @@ typedef struct {
     uint16_t positive_synapse_type;
     uint16_t negative_synapse_type;
     uint16_t presynaptic_trace_synapse_type;
+    uint16_t unused;
     union {
         uint32_t delay;
         struct {
@@ -246,7 +247,7 @@ static inline void do_convolution_operation(
                     log_debug("Updating ring_buffers[%u] for post neuron %u = %u, %u, with presynaptic trace",
                             rb_index, post_index, tmp_col, tmp_row);
                     // Add one to current ring buffer value, avoiding saturation
-                    uint32_t accumulation = ring_buffers[rb_index] + 1;
+                    uint32_t accumulation = ring_buffers[rb_index] + 32768;
                     uint32_t sat_test = accumulation & 0x10000;
                     if (sat_test) {
                         accumulation = sat_test - 1;

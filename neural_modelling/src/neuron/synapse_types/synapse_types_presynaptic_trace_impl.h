@@ -53,6 +53,7 @@ struct synapse_types_params_t {
     input_t exc;
     input_t inh;
     exp_params_t trace;
+    REAL alpha;
     REAL time_step_ms;
 };
 
@@ -110,6 +111,7 @@ static inline void synapse_types_shape_input(
 static inline void synapse_types_add_neuron_input(
         index_t synapse_type_index, synapse_types_t *parameters,
         input_t input) {
+    log_debug("synapse_type_index = %u, input = %11.4k", synapse_type_index, input);
     switch (synapse_type_index) {
     case EXCITATORY:
     	parameters->exc += input;
@@ -118,7 +120,9 @@ static inline void synapse_types_add_neuron_input(
     	parameters->inh += input;
     	break;
     case TRACE:
-    	add_input_exp(&parameters->trace, input);
+        log_debug("Before: trace.synaptic_input_value = %11.4k", parameters->trace.synaptic_input_value);
+    	add_input_exp(&parameters->trace, decay_s1615(input, parameters->alpha));
+        log_debug("After: trace.synaptic_input_value = %11.4k", parameters->trace.synaptic_input_value);
     	break;
     }
 }
@@ -180,9 +184,9 @@ static inline void synapse_types_print_input(
 //! \param[in] parameters: the pointer to the parameters to print
 static inline void synapse_types_print_parameters(
         UNUSED synapse_types_t *parameters) {
-    log_info("trace_decay  = %11.4k\n", parameters->trace.decay);
-    log_info("trace_init   = %11.4k\n", parameters->trace.init);
-    log_info("gsyn_trace_initial_value = %11.4k\n",
+    log_info("trace_decay  = %11.4k", parameters->trace.decay);
+    log_info("trace_init   = %11.4k", parameters->trace.init);
+    log_info("gsyn_trace_initial_value = %11.4k",
             parameters->trace.synaptic_input_value);
 }
 

@@ -34,7 +34,7 @@ SOURCE_KEY_INFO_WORDS = 7
 #: The number of 16-bit shorts in the connector struct,
 #: ignoring the source_key_info struct but including the delay and the
 #: 32-bit weight index
-CONNECTOR_CONFIG_SHORTS = 21
+CONNECTOR_CONFIG_SHORTS = 22
 
 
 class ConvolutionConnector(AbstractConnector):
@@ -479,7 +479,7 @@ class ConvolutionConnector(AbstractConnector):
             self.__recip(self.__strides[0]), self.__recip(self.__strides[1]),
             self.__strides[0], self.__strides[1],
             self.__recip(ps_y), self.__recip(ps_x),
-            pos_synapse_type, neg_synapse_type, presynaptic_trace_synapse_type],
+            pos_synapse_type, neg_synapse_type, presynaptic_trace_synapse_type, 0],
             dtype="uint16")
 
         # Work out delay

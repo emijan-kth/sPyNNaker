@@ -43,6 +43,9 @@ class IFCurrPresynapticTrace(AbstractPyNNNeuronModelStandard):
     :param tau_syn_trace: :math:`\tau^{syn}_{trace}`
     :type tau_syn_trace: float or iterable(float) or
         ~spynnaker.pyNN.RandomDistribution or (mapping) function
+    :param alpha: :math:`\alpha`
+    :type alpha: float or iterable(float) or
+        ~spynnaker.pyNN.RandomDistribution or (mapping) function
     :param tau_refrac: :math:`\\tau_{refrac}`
     :type tau_refrac: float, iterable(float),
         ~spynnaker.pyNN.RandomDistribution or (mapping) function
@@ -67,12 +70,12 @@ class IFCurrPresynapticTrace(AbstractPyNNNeuronModelStandard):
     @default_initial_values({"v", "isyn_exc", "isyn_inh", "isyn_trace"})
     def __init__(
             self, tau_m=20.0, cm=1.0, v_rest=-65.0, v_reset=-65.0,
-            v_thresh=-50.0, tau_syn_trace=5.0, tau_refrac=0.1, i_offset=0.0, v=-65.0,
+            v_thresh=-50.0, tau_syn_trace=5.0, alpha=0.5, tau_refrac=0.1, i_offset=0.0, v=-65.0,
             isyn_exc=0.0, isyn_inh=0.0, isyn_trace=0.0):
         # pylint: disable=too-many-arguments
         neuron_model = NeuronModelLeakyIntegrateAndFire(
             v, v_rest, tau_m, cm, i_offset, v_reset, tau_refrac)
-        synapse_type = SynapseTypePresynapticTrace(isyn_exc, isyn_inh, tau_syn_trace, isyn_trace)
+        synapse_type = SynapseTypePresynapticTrace(isyn_exc, isyn_inh, tau_syn_trace, alpha, isyn_trace)
         input_type = InputTypeDelta()
         threshold_type = ThresholdTypeStatic(v_thresh)
 
