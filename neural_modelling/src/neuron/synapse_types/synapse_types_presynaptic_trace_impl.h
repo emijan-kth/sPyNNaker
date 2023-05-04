@@ -123,7 +123,7 @@ static inline void synapse_types_add_neuron_input(
     	break;
     case TRACE:
         log_debug("Before: trace.synaptic_input_value = %11.4k", parameters->trace.synaptic_input_value);
-    	add_input_exp(&parameters->trace, decay_s1615(input, parameters->alpha));
+    	add_input_exp(&parameters->trace, parameters->alpha * input);
         log_debug("After: trace.synaptic_input_value = %11.4k", parameters->trace.synaptic_input_value);
     	break;
     }
