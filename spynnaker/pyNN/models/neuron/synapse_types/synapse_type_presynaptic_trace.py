@@ -63,8 +63,8 @@ class SynapseTypePresynapticTrace(AbstractSynapseType):
                 (DataType.S1615, ISYN_EXC),  # isyn_exc
                 (DataType.S1615, ISYN_INH),  # isyn_inh
                 (DataType.S1615, TAU_SYN_TRACE),
-                (DataType.S1615, ALPHA),
                 (DataType.S1615, ISYN_TRACE),
+                (DataType.S1615, ALPHA),
                 (DataType.S1615, TIMESTEP_MS),
                 ])],  
             {ISYN_EXC: "", ISYN_EXC: "", TAU_SYN_TRACE: 'mV', ALPHA: "", ISYN_TRACE: ""})
