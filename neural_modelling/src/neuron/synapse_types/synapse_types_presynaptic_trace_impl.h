@@ -61,6 +61,7 @@ struct synapse_types_t {
     input_t exc; //!< Excitatory synaptic input
     input_t inh; //!< Inhibitory synaptic input
     exp_state_t trace; //!< Presynaptic trace input
+    REAL alpha;
 };
 
 //! The supported synapse type indices
@@ -79,6 +80,7 @@ static inline void synapse_types_initialise(synapse_types_t *state,
 	state->exc = params->exc;
 	state->inh = params->inh;
     decay_and_init(&state->trace, &params->trace, params->time_step_ms, n_steps_per_timestep);
+    state->alpha = params->alpha;
 }
 
 static void synapse_types_save_state(synapse_types_t *state, synapse_types_params_t *params) {
