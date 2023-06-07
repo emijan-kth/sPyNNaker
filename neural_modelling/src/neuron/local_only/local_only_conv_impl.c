@@ -35,14 +35,15 @@ typedef struct {
     uint16_t positive_synapse_type;
     //! The index of the synapse for negative weights
     uint16_t negative_synapse_type;
+    uint16_t presynaptic_trace_synapse_type;
 	//! The delay stage
 	uint16_t delay_stage;
 	//! The delay in time steps
     uint16_t delay;
     //! The index of the weights for the kernel
     uint16_t kernel_index;
-    //! Padding
-    uint16_t _PAD;
+    //! stride
+    lc_coord_t strides;
     //! 1 / stride height
     div_const stride_height_div;
     //! 1 / stride width;
@@ -177,19 +178,28 @@ bool local_only_impl_initialise(void *address){
     return true;
 }
 
+//! \brief Calculate the remainder from a division
+static inline int16_t calc_remainder(int16_t dividend, int16_t divisor, int16_t quotient) {
+    int16_t remainder = dividend - quotient * divisor;
+    log_debug("remainder: %d = %d * %d + %d",
+            dividend, quotient, divisor, remainder);
+    return remainder;
+}
+
 //! \brief Do a mapping from pre to post 2D spaces, we use the standard
 //! padding, kernel, strides from Convolutional Neural Networks
 //! because of the way we're looping through the kernel, we divide the kernel
 //! shape by 2.
-static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre,
-        int16_t half_kh, int16_t half_kw) {
-    lc_coord_t post = pre;
-    post.row = div_by_const(post.row, connector->pool_stride_height_div);
-    post.col = div_by_const(post.col, connector->pool_stride_width_div);
-    post.row = post.row - half_kh + connector->padding.height;
-    post.col = post.col - half_kw + connector->padding.width;
-    post.row = div_by_const(post.row, connector->stride_height_div);
-    post.col = div_by_const(post.col, connector->stride_width_div);
+static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre, lc_coord_t *start_i) {
+    pre.row = div_by_const(pre.row, connector->pool_stride_height_div);
+    pre.col = div_by_const(pre.col, connector->pool_stride_width_div);
+    pre.row += connector->padding.height;
+    pre.col += connector->padding.width;
+    lc_coord_t post;
+    post.row = div_by_const(pre.row, connector->stride_height_div);
+    post.col = div_by_const(pre.col, connector->stride_width_div);
+    start_i->row = calc_remainder(pre.row, connector->strides.row, post.row);
+    start_i->col = calc_remainder(pre.col, connector->strides.col, post.col);
     return post;
 }
 
@@ -200,22 +210,29 @@ static inline lc_coord_t map_pre_to_post(connector *connector, lc_coord_t pre,
 static inline void do_convolution_operation(
         uint32_t time, lc_coord_t pre_coord, connector *connector,
         uint16_t *ring_buffers) {
-    int32_t half_kh = connector->kernel.height / 2;
-    int32_t half_kw = connector->kernel.width / 2;
-    lc_coord_t post_coord = map_pre_to_post(connector, pre_coord, half_kh, half_kw);
+    lc_coord_t start_i;
+    log_debug("kernel height: %d, kernel width: %d, padding height: %d, padding width: %d, strides row: %d, strides col: %d", connector->kernel.height, connector->kernel.width, connector->padding.height, connector->padding.width, connector->strides.row, connector->strides.col);
+    lc_coord_t post_coord = map_pre_to_post(connector, pre_coord, &start_i);
     log_debug("pre row %d, col %d AS post row %d, col %d",
             pre_coord.row, pre_coord.col, post_coord.row, post_coord.col);
     lc_weight_t *connector_weights = &weights[connector->kernel_index];
 
     int32_t kw = connector->kernel.width;
-    for (int32_t r = -half_kh, kr = 0; r <= half_kh; r++, kr++) {
-        int32_t tmp_row = post_coord.row + r;
+    for (int32_t i_row = start_i.row, tmp_row = post_coord.row; i_row < connector->kernel.height; i_row += connector->strides.row, --tmp_row) {
+        int32_t kr = connector->kernel.height - 1 - i_row;
+        log_debug("i_row = %u, kr = %u, tmp_row = %u", i_row, kr, tmp_row);
+
         if ((tmp_row < config->post_start.row) || (tmp_row > config->post_end.row)) {
+            log_debug("tmp_row outside");
             continue;
         }
-        for (int32_t c = -half_kw, kc = 0; c <= half_kw; c++, kc++) {
-            int32_t tmp_col = post_coord.col + c;
+
+        for (int32_t i_col = start_i.col, tmp_col = post_coord.col; i_col < connector->kernel.width; i_col += connector->strides.col, --tmp_col) {
+            int32_t kc = connector->kernel.width - 1 - i_col;
+
+            log_debug("i_col = %u, kc = %u, tmp_col = %u", i_col, kc, tmp_col);
             if ((tmp_col < config->post_start.col) || (tmp_col > config->post_end.col)) {
+                log_debug("tmp_col outside");
                 continue;
             }
 
@@ -223,9 +240,28 @@ static inline void do_convolution_operation(
             uint32_t post_index =
                 ((tmp_row - config->post_start.row) * config->post_shape.width)
                     + (tmp_col - config->post_start.col);
+
+            if (connector->presynaptic_trace_synapse_type != 0xffff) {
+                uint32_t rb_index = synapse_row_get_ring_buffer_index(time + connector->delay,
+                    connector->presynaptic_trace_synapse_type, post_index,
+                    synapse_type_index_bits, synapse_index_bits,
+                    synapse_delay_mask);
+                log_debug("Updating ring_buffers[%u] for post neuron %u = %u, %u, with presynaptic trace",
+                        rb_index, post_index, tmp_col, tmp_row);
+                // Add one to current ring buffer value, avoiding saturation
+                uint32_t accumulation = ring_buffers[rb_index] + 32768;
+                uint32_t sat_test = accumulation & 0x10000;
+                if (sat_test) {
+                    accumulation = sat_test - 1;
+                }
+                ring_buffers[rb_index] = accumulation;
+            }
+
             uint32_t k = (kr * kw) + kc;
+            log_debug("weight index = %u", k);
             lc_weight_t weight = connector_weights[k];
             if (weight == 0) {
+                log_debug("zero weight");
                 continue;
             }
             uint32_t rb_index = 0;

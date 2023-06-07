@@ -27,7 +27,7 @@ from spynnaker.pyNN.models.common.local_only_2d_common import get_div_const
 from .abstract_connector import AbstractConnector
 
 #: The size of the connector struct in bytes
-CONNECTOR_CONFIG_SIZE = (10 * BYTES_PER_SHORT) + (4 * BYTES_PER_WORD)
+CONNECTOR_CONFIG_SIZE = (12 * BYTES_PER_SHORT) + (4 * BYTES_PER_WORD)
 
 
 class ConvolutionConnector(AbstractConnector):
@@ -45,13 +45,16 @@ class ConvolutionConnector(AbstractConnector):
         "__pool_shape",
         "__pool_stride",
         "__positive_receptor_type",
-        "__negative_receptor_type"
+        "__negative_receptor_type",
+        "__presynaptic_trace_receptor_type"
     ]
 
     def __init__(self, kernel_weights, kernel_shape=None, strides=None,
                  padding=None, pool_shape=None, pool_stride=None,
                  positive_receptor_type="excitatory",
-                 negative_receptor_type="inhibitory", safe=True,
+                 negative_receptor_type="inhibitory",
+                 presynaptic_trace_receptor_type=None,
+                 safe=True,
                  verbose=False, callback=None):
         """
         :param kernel_weights:
@@ -108,6 +111,9 @@ class ConvolutionConnector(AbstractConnector):
         :param str negative_receptor_type:
             The receptor type to add the negative weights to.  By default this
             is "``inhibitory``".
+        :param str presynaptic_trace_receptor_type:
+            The receptor type for presynaptic trace.  By default this
+            is None.
         :param bool safe: (ignored)
         :param bool verbose: (ignored)
         :param callable callback: (ignored)
@@ -130,6 +136,7 @@ class ConvolutionConnector(AbstractConnector):
 
         self.__positive_receptor_type = positive_receptor_type
         self.__negative_receptor_type = negative_receptor_type
+        self.__presynaptic_trace_receptor_type = presynaptic_trace_receptor_type
 
     @property
     def positive_receptor_type(self):
@@ -138,6 +145,10 @@ class ConvolutionConnector(AbstractConnector):
     @property
     def negative_receptor_type(self):
         return self.__negative_receptor_type
+
+    @property
+    def presynaptic_trace_receptor_type(self):
+        return self.__presynaptic_trace_receptor_type
 
     @property
     def kernel_weights(self):
@@ -212,11 +223,10 @@ class ConvolutionConnector(AbstractConnector):
             shape = shape // self.__pool_stride
 
         kernel_shape = numpy.array(self.__kernel_weights.shape)
-        post_shape = (shape - (kernel_shape - 1) +
-                      (2 * self.__padding_shape))
+        post_shape = shape - kernel_shape + (2 * self.__padding_shape)
 
         return numpy.clip(
-            post_shape // self.__strides, 1, numpy.inf).astype('int')
+            post_shape // self.__strides + 1, 1, numpy.inf).astype('int')
 
     @overrides(AbstractConnector.validate_connection)
     def validate_connection(self, application_edge, synapse_info):
@@ -227,7 +237,9 @@ class ConvolutionConnector(AbstractConnector):
                 "The ConvolutionConnector only works where the Populations"
                 " of a Projection are both 2D.  Please ensure that both the"
                 " Populations use a Grid2D structure.")
-        expected_post_shape = tuple(self.get_post_shape(pre.atoms_shape))
+        pre_shape = pre.atoms_shape
+        expected_post_shape = tuple(self.get_post_shape((pre_shape[1], pre_shape[0])))
+        expected_post_shape = expected_post_shape[1], expected_post_shape[0]
         if expected_post_shape != post.atoms_shape:
             raise ConfigurationException(
                 f"With a source population with shape {pre.atoms_shape}, "
@@ -244,6 +256,12 @@ class ConvolutionConnector(AbstractConnector):
             raise ConfigurationException(
                 "The post population doesn't have a synaptic receptor type of"
                 f" {self.__negative_receptor_type}")
+        if self.__presynaptic_trace_receptor_type is not None and \
+            post.get_synapse_id_by_target(
+                self.__presynaptic_trace_receptor_type) is None:
+            raise ConfigurationException(
+                "The post population doesn't have a presynaptic trace receptor type of"
+                f" {self.__presynaptic_trace_receptor_type}")
 
     @overrides(AbstractConnector.get_delay_minimum)
     def get_delay_minimum(self, synapse_info):
@@ -280,10 +298,20 @@ class ConvolutionConnector(AbstractConnector):
         pre_slices = [m_vertex.vertex_slice for m_vertex in pre_vertices]
         pre_slices_x = [vtx_slice.get_slice(0) for vtx_slice in pre_slices]
         pre_slices_y = [vtx_slice.get_slice(1) for vtx_slice in pre_slices]
-        pre_ranges = [[[px.start, py.start], [px.stop - 1, py.stop - 1]]
+        pre_ranges = [[[py.start, px.start], [py.stop - 1, px.stop - 1]]
                       for px, py in zip(pre_slices_x, pre_slices_y)]
-        pres_as_posts = self.__pre_as_post(pre_ranges)
-        hlf_k_w, hlf_k_h = numpy.array(self.__kernel_weights.shape) // 2
+        pre_vertex_in_post_layer, start_i = self.__pre_as_post(pre_ranges)
+
+        pre_vertex_in_post_layer_upper_left = pre_vertex_in_post_layer[:,0]
+        pre_vertex_in_post_layer_lower_right = pre_vertex_in_post_layer[:,1]
+
+        kernel_shape = numpy.array(self.__kernel_weights.shape)
+
+        j = (kernel_shape - 1 - start_i) // self.__strides
+        j_upper_left = j[:,0]
+
+        pre_vertex_max_reach_in_post_layer_upper_left = pre_vertex_in_post_layer_upper_left - j_upper_left
+        pre_vertex_max_reach_in_post_layer_lower_right = pre_vertex_in_post_layer_lower_right
 
         connected = list()
         for post in target_vertex.splitter.get_in_coming_vertices(
@@ -292,18 +320,18 @@ class ConvolutionConnector(AbstractConnector):
             post_slice_x = post_slice.get_slice(0)
             post_slice_y = post_slice.get_slice(1)
 
-            # Get ranges allowed in post
-            min_x = post_slice_x.start - hlf_k_w
-            max_x = (post_slice_x.stop + hlf_k_w) - 1
-            min_y = post_slice_y.start - hlf_k_h
-            max_y = (post_slice_y.stop + hlf_k_h) - 1
+            # Get ranges allowed in post vertex
+            min_x = post_slice_x.start
+            max_x = post_slice_x.stop - 1
+            min_y = post_slice_y.start
+            max_y = post_slice_y.stop - 1
 
             # Test that the start coords are in range i.e. less than max
             start_in_range = numpy.logical_not(
-                numpy.any(pres_as_posts[:, 0] > [max_x, max_y], axis=1))
+                numpy.any(pre_vertex_max_reach_in_post_layer_upper_left > [max_y, max_x], axis=1))
             # Test that the end coords are in range i.e. more than min
             end_in_range = numpy.logical_not(
-                numpy.any(pres_as_posts[:, 1] < [min_x, min_y], axis=1))
+                numpy.any(pre_vertex_max_reach_in_post_layer_lower_right < [min_y, min_x], axis=1))
             # When both things are true, we have a vertex in range
             pre_in_range = pre_vertices[
                 numpy.logical_and(start_in_range, end_in_range)]
@@ -323,10 +351,11 @@ class ConvolutionConnector(AbstractConnector):
         if self.__pool_stride is not None:
             coords //= self.__pool_stride
 
-        kernel_shape = numpy.array(self.__kernel_weights.shape)
-        coords = coords - kernel_shape // 2 + self.__padding_shape
-        coords //= self.__strides
-        return coords
+        coords += self.__padding_shape
+        coord_by_strides = coords // self.__strides
+        start_i = coords % self.__strides
+
+        return coord_by_strides, start_i
 
     @property
     def kernel_n_bytes(self):
@@ -345,7 +374,7 @@ class ConvolutionConnector(AbstractConnector):
             self, app_edge, local_delay, delay_stage, weight_index):
         # Get info about things
         kernel_shape = self.__kernel_weights.shape
-        ps_x, ps_y = 1, 1
+        ps_y, ps_x = 1, 1
         if self.__pool_stride is not None:
             ps_x, ps_y = self.__pool_stride
 
@@ -354,13 +383,17 @@ class ConvolutionConnector(AbstractConnector):
             self.__positive_receptor_type)
         neg_synapse_type = app_edge.post_vertex.get_synapse_id_by_target(
             self.__negative_receptor_type)
+        presynaptic_trace_synapse_type = app_edge.post_vertex.get_synapse_id_by_target(
+            self.__presynaptic_trace_receptor_type)
+        if presynaptic_trace_synapse_type is None: presynaptic_trace_synapse_type = 0xffff
 
         # Produce the values needed
         short_values = numpy.array([
             kernel_shape[1], kernel_shape[0],
             self.__padding_shape[1], self.__padding_shape[0],
-            pos_synapse_type, neg_synapse_type, delay_stage, local_delay,
-            weight_index, 0], dtype="uint16")
+            pos_synapse_type, neg_synapse_type, presynaptic_trace_synapse_type,
+            delay_stage, local_delay, weight_index,
+            self.__strides[0], self.__strides[1]], dtype="uint16")
         long_values = numpy.array([
             get_div_const(self.__strides[1]), get_div_const(self.__strides[0]),
             get_div_const(ps_y), get_div_const(ps_x)], dtype="uint32")

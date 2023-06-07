@@ -228,6 +228,7 @@ static void neuron_impl_load_neuron_parameters(
         neuron_model_print_parameters(&neuron_array[n]);
         neuron_model_print_state_variables(&neuron_array[n]);
     }
+    neuron_impl_print_synapse_parameters(n_neurons);
 #endif // LOG_LEVEL >= LOG_DEBUG
 }
 
