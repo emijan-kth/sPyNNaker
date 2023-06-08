@@ -389,13 +389,13 @@ class ConvolutionConnector(AbstractConnector):
 
         # Produce the values needed
         short_values = numpy.array([
-            kernel_shape[1], kernel_shape[0],
-            self.__padding_shape[1], self.__padding_shape[0],
+            kernel_shape[0], kernel_shape[1],
+            self.__padding_shape[0], self.__padding_shape[1],
             pos_synapse_type, neg_synapse_type, presynaptic_trace_synapse_type,
             delay_stage, local_delay, weight_index,
             self.__strides[0], self.__strides[1]], dtype="uint16")
         long_values = numpy.array([
-            get_div_const(self.__strides[1]), get_div_const(self.__strides[0]),
+            get_div_const(self.__strides[0]), get_div_const(self.__strides[1]),
             get_div_const(ps_y), get_div_const(ps_x)], dtype="uint32")
         return numpy.concatenate((short_values.view("uint32"), long_values))
 
