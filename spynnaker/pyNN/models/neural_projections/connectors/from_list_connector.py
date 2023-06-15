@@ -129,12 +129,12 @@ class FromListConnector(AbstractConnector, AbstractGenerateConnectorOnHost):
         """
         # If nothing has changed, use the cache
         if self.__split_post_slices == post_slices:
-            return
+            return False
 
         # If there are no connections, return
         if not len(self.__conn_list):
             self.__split_conn_list = {}
-            return
+            return True
 
         self.__split_post_slices = list(post_slices)
         m_vertex_mapping = self.__id_to_m_vertex_index(n_atoms, post_slices)
@@ -159,6 +159,7 @@ class FromListConnector(AbstractConnector, AbstractGenerateConnectorOnHost):
             for i, indices in enumerate(split_indices)
             if len(indices) > 0
         }
+        return True
 
     @overrides(AbstractConnector.get_n_connections_from_pre_vertex_maximum)
     def get_n_connections_from_pre_vertex_maximum(
@@ -484,3 +485,16 @@ class FromListConnector(AbstractConnector, AbstractGenerateConnectorOnHost):
         if self.__extra_parameter_names:
             for i, name in enumerate(self.__extra_parameter_names):
                 synapse_type.set_value(name, self.__extra_parameters[:, i])
+
+    @overrides(AbstractConnector.validate_connection)
+    def validate_connection(self, application_edge, synapse_info):
+        out_of_range_targets = self.__targets >= synapse_info.n_post_neurons
+        if any(out_of_range_targets):
+            raise ValueError(
+                "Some targets are out of range:"
+                f" {self.__conn_list[out_of_range_targets]}")
+        out_of_range_sources = self.__sources >= synapse_info.n_pre_neurons
+        if any(out_of_range_sources):
+            raise ValueError(
+                "Some sources are out of range:"
+                f" {self.__conn_list[out_of_range_sources]}")
