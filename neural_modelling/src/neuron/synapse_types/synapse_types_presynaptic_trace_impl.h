@@ -60,8 +60,9 @@ struct synapse_types_params_t {
 struct synapse_types_t {
     input_t exc; //!< Excitatory synaptic input
     input_t inh; //!< Inhibitory synaptic input
-    exp_state_t trace; //!< Presynaptic trace input
-    REAL alpha;
+    input_t trace; //!< Presynaptic trace input
+    decay_t trace_decay;
+    decay_t trace_input_factor;
 };
 
 //! The supported synapse type indices
@@ -79,14 +80,22 @@ static inline void synapse_types_initialise(synapse_types_t *state,
 		synapse_types_params_t *params, UNUSED uint32_t n_steps_per_timestep) {
 	state->exc = params->exc;
 	state->inh = params->inh;
-    decay_and_init(&state->trace, &params->trace, params->time_step_ms, n_steps_per_timestep);
-    state->alpha = params->alpha;
+
+	REAL ts = kdivui(params->time_step_ms, n_steps_per_timestep);
+	REAL ts_over_tau = kdivk(ts, params->trace.tau);
+
+    state->trace_decay = 1.0ulr - ts_over_tau;
+    state->trace_input_factor = ts_over_tau * params->alpha;
+	state->trace = params->trace.init_input;
+
+	log_debug("state->trace_decay = %11.4k", (REAL) state->trace_decay);
+	log_debug("state->trace_input_factor = %11.4k", (REAL) state->trace_input_factor);
 }
 
 static void synapse_types_save_state(synapse_types_t *state, synapse_types_params_t *params) {
 	params->exc = state->exc;
 	params->inh = state->inh;
-	params->trace.init_input = state->trace.synaptic_input_value;
+	params->trace.init_input = state->trace;
 }
 
 //! \brief decays the stuff thats sitting in the input buffers as these have not
@@ -101,7 +110,9 @@ static inline void synapse_types_shape_input(
         synapse_types_t *parameters) {
 	parameters->exc = ZERO;
 	parameters->inh = ZERO;
-	exp_shaping(&parameters->trace);
+    log_debug("Shape input, before: parameters->trace = %11.4k", parameters->trace);
+    parameters->trace = decay_s1615(parameters->trace, parameters->trace_decay);
+    log_debug("Shape input, after: parameters->trace = %11.4k", parameters->trace);
 }
 
 //! \brief adds the inputs for a give timer period to a given neuron that is
@@ -122,9 +133,12 @@ static inline void synapse_types_add_neuron_input(
     	parameters->inh += input;
     	break;
     case TRACE:
-        log_debug("Before: trace.synaptic_input_value = %11.4k", parameters->trace.synaptic_input_value);
-    	add_input_exp(&parameters->trace, parameters->alpha * input);
-        log_debug("After: trace.synaptic_input_value = %11.4k", parameters->trace.synaptic_input_value);
+        log_debug(
+            "Add neuron input, before: trace.synaptic_input_value = %11.4k, input = %11.4k",
+            parameters->trace,
+            input);
+        parameters->trace = parameters->trace + decay_s1615(input, parameters->trace_input_factor);
+        log_debug("Add neuron input, after: trace.synaptic_input_value = %11.4k", parameters->trace);
     	break;
     }
 }
@@ -148,7 +162,7 @@ static inline input_t *synapse_types_get_excitatory_input(
 static inline input_t *synapse_types_get_inhibitory_input(
         input_t *inhibitory_response, synapse_types_t *parameters) {
     inhibitory_response[0] = parameters->inh;
-    inhibitory_response[1] = parameters->trace.synaptic_input_value;
+    inhibitory_response[1] = parameters->trace;
     return &inhibitory_response[0];
 }
 
@@ -179,17 +193,17 @@ static inline const char *synapse_types_get_type_char(
 static inline void synapse_types_print_input(
         synapse_types_t *parameters) {
     io_printf(IO_BUF, "%12.6k - %12.6k - %12.6k",
-            parameters->exc, parameters->inh, parameters->trace.synaptic_input_value);
+            parameters->exc, parameters->inh, parameters->trace);
 }
 
 //! \brief printer call
 //! \param[in] parameters: the pointer to the parameters to print
 static inline void synapse_types_print_parameters(
         UNUSED synapse_types_t *parameters) {
-    log_info("trace_decay  = %11.4k", parameters->trace.decay);
-    log_info("trace_init   = %11.4k", parameters->trace.init);
+    log_info("trace_decay  = %11.4k", parameters->trace_decay);
+    log_info("trace_input_factor   = %11.4k", parameters->trace_input_factor);
     log_info("gsyn_trace_initial_value = %11.4k",
-            parameters->trace.synaptic_input_value);
+            parameters->trace);
 }
 
 #endif  // _SYNAPSE_TYPES_PRESYNAPTIC_TRACE_IMPL_H_
