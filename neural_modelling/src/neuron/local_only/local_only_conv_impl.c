@@ -389,7 +389,7 @@ void local_only_impl_process_spike(
     	};
 
     	log_debug("Local coord = %u, %u, Pre coord = %u, %u",
-    			local_col, local_row, pre_coord.col, pre_coord.col);
+    			local_col, local_row, pre_coord.col, pre_coord.row);
 
 		// Compute the convolution
 		do_convolution_operation(time, pre_coord, connector, ring_buffers);
