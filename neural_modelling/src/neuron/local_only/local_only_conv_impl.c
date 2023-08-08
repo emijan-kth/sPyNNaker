@@ -249,7 +249,10 @@ static inline void do_convolution_operation(
                 log_debug("Updating ring_buffers[%u] for post neuron %u = %u, %u, with presynaptic trace",
                         rb_index, post_index, tmp_col, tmp_row);
                 // Add one to current ring buffer value, avoiding saturation
-                uint32_t accumulation = ring_buffers[rb_index] + 32768;
+
+                // TODO: Do not use hard coded weight representing 1.0,
+                // instead use actual weight scaling
+                uint32_t accumulation = ring_buffers[rb_index] + 4096;
                 uint32_t sat_test = accumulation & 0x10000;
                 if (sat_test) {
                     accumulation = sat_test - 1;

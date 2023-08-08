@@ -1643,6 +1643,13 @@ class _Stats(object):
         w_max_neg = -s_dynamics.get_minimum_negative_weight(proj)
         self.__add_details(
             proj, s_type_neg, n_conns, w_mean_neg, w_var_neg, w_max_neg, d_var)
+        
+        s_type_aux = s_dynamics.get_auxiliary_synapse_index(proj)
+
+        if s_type_aux is not None:
+            self.__add_details(
+                proj, s_type_aux, n_conns, 1.0, 0.0, 1.0, d_var)
+
 
     def __add_unsigned_projection(self, proj):
         # pylint: disable=protected-access
@@ -1685,8 +1692,8 @@ class _Stats(object):
         return spikes_per_tick, spikes_per_second
 
     def get_max_weight(self, s_type):
-        if self.delay_running_totals[s_type].variance == 0.0:
-            return max(self.total_weights[s_type], self.biggest_weight[s_type])
+#        if self.delay_running_totals[s_type].variance == 0.0:
+#            return max(self.total_weights[s_type], self.biggest_weight[s_type])
 
         stats = self.running_totals[s_type]
         rates = self.rate_stats[s_type]

@@ -40,6 +40,11 @@ class AbstractSupportsSignedWeights(object, metaclass=AbstractBase):
         """
 
     @abstractmethod
+    def get_auxiliary_synapse_index(self, incoming_projection):
+        """
+        """
+
+    @abstractmethod
     def get_maximum_positive_weight(self, incoming_projection):
         """
         Get the maximum likely positive weight.
