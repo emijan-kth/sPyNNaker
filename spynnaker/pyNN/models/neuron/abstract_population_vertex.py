@@ -1639,7 +1639,7 @@ class _Stats(object):
 
         s_type_neg = s_dynamics.get_negative_synapse_index(proj)
         w_mean_neg = -s_dynamics.get_mean_negative_weight(proj)
-        w_var_neg = -s_dynamics.get_variance_negative_weight(proj)
+        w_var_neg = s_dynamics.get_variance_negative_weight(proj)
         w_max_neg = -s_dynamics.get_minimum_negative_weight(proj)
         self.__add_details(
             proj, s_type_neg, n_conns, w_mean_neg, w_var_neg, w_max_neg, d_var)
