@@ -252,7 +252,7 @@ static inline void do_convolution_operation(
 
                 // TODO: Do not use hard coded weight representing 1.0,
                 // instead use actual weight scaling
-                uint32_t accumulation = ring_buffers[rb_index] + 4096;
+                uint32_t accumulation = ring_buffers[rb_index] + 1;
                 uint32_t sat_test = accumulation & 0x10000;
                 if (sat_test) {
                     accumulation = sat_test - 1;
@@ -374,8 +374,8 @@ void local_only_impl_process_spike(
     	// Ignore the neuron if the delay does not match
 		uint32_t first_neuron = neurons_per_core * connector->delay_stage;
 		uint32_t last_neuron = first_neuron + neurons_per_core;
-		log_debug("Connector %u, delay stage = %u, first = %u, last = %u",
-				i, connector->delay_stage, first_neuron, last_neuron);
+		log_debug("Connector %u, delay stage = %u, first = %u, last = %u, delay = %u",
+				i, connector->delay_stage, first_neuron, last_neuron, connector->delay);
     	if (local_id < first_neuron	|| local_id >= last_neuron) {
     		continue;
     	}
