@@ -66,7 +66,7 @@ struct neuron_t {
     //! 'fixed' computation parameter - time constant multiplier for
     //! closed-form solution
     //! exp(-(machine time step in ms)/(R * C)) [.]
-    REAL     exp_TC;
+    REAL     ts_over_tau;
 
     //! offset current [nA]
     REAL     I_offset;
@@ -100,7 +100,7 @@ static inline void neuron_model_initialise(
 	state->V_membrane = params->V_init;
 	state->V_rest = params->V_rest;
     state->R_membrane = kdivk(params->tau_m, params->c_m);
-	state->exp_TC = expk(-kdivk(ts, params->tau_m));
+	state->ts_over_tau = kdivk(ts, params->tau_m);
 	state->I_offset = params->I_offset;
     state->refract_timer = params->refract_timer_init;
 	state->V_reset = params->V_reset;
@@ -112,16 +112,35 @@ static inline void neuron_model_save_state(neuron_t *state, neuron_params_t *par
 	params->refract_timer_init = state->refract_timer;
 }
 
+#include <common/maths-util.h>
+
+typedef UFRACT decay_t;
+
+static inline s1615 decay_s1615_2(s1615 x, decay_t decay)
+{
+    int64_t s = (int64_t) bitsk(x);
+    int64_t u = (int64_t) bitsulr(decay);
+
+    return kbits((int_k_t) ((s * u) >> 32));
+}
+
 //! \brief simple Leaky I&F ODE
 //! \param[in,out] neuron: The neuron to update
 //! \param[in] V_prev: previous voltage
 //! \param[in] input_this_timestep: The input to apply
 static inline void lif_neuron_closed_form(
         neuron_t *neuron, REAL V_prev, input_t input_this_timestep) {
-    REAL alpha = input_this_timestep * neuron->R_membrane + neuron->V_rest;
+
+    REAL decay = 1.0ulr - neuron->ts_over_tau;
+
+    REAL V = decay_s1615_2(V_prev, decay);
+
+    neuron->V_membrane = V + decay_s1615_2(input_this_timestep, neuron->ts_over_tau);
 
     // update membrane voltage
-    neuron->V_membrane = alpha - (neuron->exp_TC * (alpha - V_prev));
+    log_debug("v_prev = = %11.4k", V_prev);
+    log_debug("neuron->V_membrane = %11.4k", neuron->V_membrane);
+    log_debug("V:%.4k", neuron->V_membrane);
 }
 
 //! \brief primary function called in timer loop after synaptic updates
@@ -150,17 +169,30 @@ static inline state_t neuron_model_state_update(
         REAL total_inh = ZERO;
 
         for (int i=0; i < num_excitatory_inputs; i++) {
+            // io_printf(IO_BUF, "%12.6k ", exc_input[i]);
             total_exc += exc_input[i];
         }
         for (int i=0; i< num_inhibitory_inputs; i++) {
+            // io_printf(IO_BUF, "-%12.6k ", inh_input[i]);
             total_inh += inh_input[i];
         }
+        // io_printf(IO_BUF, "\n");
+
+    	log_debug("total_exc = %11.4k, total_inh = %11.4k", total_exc, total_inh);
         // Get the input in nA
         input_t input_this_timestep =
                 total_exc - total_inh + external_bias + neuron->I_offset + current_offset;
+    	log_debug("input_this_timestep = %11.4k", input_this_timestep);
 
         lif_neuron_closed_form(
                 neuron, neuron->V_membrane, input_this_timestep);
+
+        if (neuron->V_membrane < 0)
+        {
+            neuron->V_membrane = 0;
+            log_debug("neuron->V_membrane reset to zero");
+        }
+
     } else {
         // countdown refractory timer
         neuron->refract_timer--;
@@ -199,8 +231,6 @@ static inline void neuron_model_print_parameters(const neuron_t *neuron) {
 
     log_info("I offset      = %11.4k nA", neuron->I_offset);
     log_info("R membrane    = %11.4k Mohm", neuron->R_membrane);
-
-    log_info("exp(-ms/(RC)) = %11.4k [.]", neuron->exp_TC);
 
     log_info("T refract     = %u timesteps", neuron->T_refract);
 }
