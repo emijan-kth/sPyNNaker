@@ -100,6 +100,9 @@ from spynnaker.pyNN.models.neuron.builds.if_curr_delta import (
 from spynnaker.pyNN.models.neuron.builds.if_curr_presynaptic_trace import (
     IFCurrPresynapticTrace as IF_curr_presynaptic_trace)
 # noinspection PyUnresolvedReferences
+from spynnaker.pyNN.models.neuron.builds.if_curr_presynaptic_trace_WTA import (
+    IFCurrPresynapticTraceWTA as IF_curr_presynaptic_trace_WTA)
+# noinspection PyUnresolvedReferences
 from spynnaker.pyNN.models.neuron.builds.izk_curr_exp_base import (
     IzkCurrExpBase as Izhikevich)
 # noinspection PyUnresolvedReferences
@@ -164,7 +167,7 @@ __all__ = [
     'LastNeuronSelection', 'RandomSelection',
     'DistanceDependentFormation', 'RandomByWeightElimination',
     # neuron stuff
-    'IF_cond_exp', 'IF_curr_exp', "IF_curr_alpha", "IF_curr_delta", "IF_curr_presynaptic_trace",
+    'IF_cond_exp', 'IF_curr_exp', "IF_curr_alpha", "IF_curr_delta", "IF_curr_presynaptic_trace", "IF_curr_presynaptic_trace_WTA",
     'Izhikevich', 'SpikeSourceArray', 'SpikeSourcePoisson',
     # pops
     'Assembly', 'Population', 'PopulationView',

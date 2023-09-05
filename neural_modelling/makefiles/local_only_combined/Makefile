@@ -14,6 +14,7 @@
 
 MODELS = IF_curr_delta_conv\
 		 IF_curr_presynaptic_trace_conv\
+		 IF_curr_presynaptic_trace_WTA_conv\
 		 IF_curr_exp_conv\
          IF_curr_exp_pool_dense
 

@@ -57,4 +57,27 @@ static inline void send_spike(UNUSED uint32_t timer_count, uint32_t time,
     }
 }
 
+//! \brief Performs the sending of a spike.  Inlined for speed.
+//! \param[in] timer_count The global timer count when the time step started
+//! \param[in] time The current time step
+//! \param[in] The neuron index to send
+static inline void send_spike_payload(UNUSED uint32_t timer_count, uint32_t time,
+        uint32_t neuron_index, uint32_t payload) {
+    // Do any required synapse processing
+    synapse_dynamics_process_post_synaptic_event(time, neuron_index);
+
+    if (use_key) {
+        send_spike_mc_payload(neuron_keys[neuron_index] | colour, payload);
+
+        // Keep track of provenance data
+        uint32_t clocks = tc[T1_COUNT];
+        if (clocks > earliest_send_time) {
+            earliest_send_time = clocks;
+        }
+        if (clocks < latest_send_time) {
+            latest_send_time = clocks;
+        }
+    }
+}
+
 #endif // __SEND_SPIKE_H__
