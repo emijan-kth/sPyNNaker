@@ -16,6 +16,7 @@ BUILDS = synapse_expander \
          spike_source/poisson \
          delay_extension \
          robot_motor_control \
+		 WTA \
          neuron_only \
          synapse_only \
          neuron \

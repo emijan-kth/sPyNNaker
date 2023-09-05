@@ -112,6 +112,9 @@ from spynnaker.pyNN.models.spike_source.spike_source_array import (
 from spynnaker.pyNN.models.spike_source.spike_source_poisson import (
     SpikeSourcePoisson)
 
+#
+from spynnaker.pyNN.models.neuron.WTA import WTA
+
 # pops
 # noinspection PyUnresolvedReferences
 from spynnaker.pyNN.models.populations import (
@@ -169,6 +172,8 @@ __all__ = [
     # neuron stuff
     'IF_cond_exp', 'IF_curr_exp', "IF_curr_alpha", "IF_curr_delta", "IF_curr_presynaptic_trace", "IF_curr_presynaptic_trace_WTA",
     'Izhikevich', 'SpikeSourceArray', 'SpikeSourcePoisson',
+    #
+    'WTA',
     # pops
     'Assembly', 'Population', 'PopulationView',
     # projection
