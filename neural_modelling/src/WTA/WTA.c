@@ -16,6 +16,8 @@
 
 #include "in_spikes_with_payload.h"
 
+#include <common/send_mc.h>
+
 #include <data_specification.h>
 #include <debug.h>
 #include <simulation.h>
@@ -125,6 +127,12 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
     {
         // Process the spike with highest membrane voltage
         log_debug("Spike with highest membrane voltage was received from neuron %x, membrane voltage: %12.6k", max_neuron, max_membrane_voltage);
+
+        uint32_t spike_key = key + max_neuron;
+
+        log_debug("Sending spike with key %x", spike_key);
+
+        send_spike_mc(spike_key);
     }
 }
 
