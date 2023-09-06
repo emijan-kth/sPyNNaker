@@ -15,10 +15,19 @@
 from .abstract_pynn_neuron_model import AbstractPyNNNeuronModel
 from spynnaker.pyNN.models.neuron.implementations.abstract_neuron_impl import AbstractNeuronImpl
 from spinn_utilities.overrides import overrides
+from spinn_front_end_common.interface.ds import DataType
+from spynnaker.pyNN.utilities.struct import Struct, StructRepeat
 
 _population_parameters = dict(
     AbstractPyNNNeuronModel.default_population_parameters)
 _population_parameters["n_steps_per_timestep"] = 1
+
+_DEFAULT_N_STEPS_PER_TIMESTEP = 1
+
+_STEPS_PER_TIMESTEP = "n_steps_per_timestep"
+_STEPS_PER_TIMESTEP_STRUCT = Struct(
+    [(DataType.UINT32, _STEPS_PER_TIMESTEP)], repeat_type=StructRepeat.GLOBAL)
+
 
 
 class WTA(AbstractPyNNNeuronModel):
@@ -36,7 +45,24 @@ class WTA(AbstractPyNNNeuronModel):
         """
         super().__init__(WTAImpl(
             model_name="WTA",
-            binary="WTA"))
+            binary="WTA.aplx"))
+
+    @overrides(AbstractPyNNNeuronModel.create_vertex,
+               additional_arguments={"n_steps_per_timestep"})
+    def create_vertex(
+            self, n_neurons, label, spikes_per_second,
+            ring_buffer_sigma, incoming_spike_buffer_size,
+            n_steps_per_timestep, drop_late_spikes, splitter, seed,
+            n_colour_bits):
+        """
+        :param int n_steps_per_timestep:
+        """
+        # pylint: disable=arguments-differ
+#        self._model.n_steps_per_timestep = n_steps_per_timestep
+        return super().create_vertex(
+            n_neurons, label, spikes_per_second,
+            ring_buffer_sigma, incoming_spike_buffer_size, drop_late_spikes,
+            splitter, seed, n_colour_bits)
 
 
 class WTAImpl(AbstractNeuronImpl):
@@ -46,7 +72,8 @@ class WTAImpl(AbstractNeuronImpl):
 
     __slots__ = [
         "__model_name",
-        "__binary"
+        "__binary",
+        "__n_steps_per_timestep"
     ]
 
     _RECORDABLES = []
@@ -65,6 +92,15 @@ class WTAImpl(AbstractNeuronImpl):
         """
         self.__model_name = model_name
         self.__binary = binary
+        self.__n_steps_per_timestep = _DEFAULT_N_STEPS_PER_TIMESTEP
+
+    @property
+    def n_steps_per_timestep(self):
+        return self.__n_steps_per_timestep
+
+    @n_steps_per_timestep.setter
+    def n_steps_per_timestep(self, n_steps_per_timestep):
+        self.__n_steps_per_timestep = n_steps_per_timestep
 
     @property
     @overrides(AbstractNeuronImpl.model_name)
@@ -79,7 +115,7 @@ class WTAImpl(AbstractNeuronImpl):
     @property
     @overrides(AbstractNeuronImpl.structs)
     def structs(self):
-        structs = []
+        structs = [_STEPS_PER_TIMESTEP_STRUCT]
         return structs
 
     @overrides(AbstractNeuronImpl.get_global_weight_scale)
@@ -120,7 +156,7 @@ class WTAImpl(AbstractNeuronImpl):
 
     @overrides(AbstractNeuronImpl.add_parameters)
     def add_parameters(self, parameters):
-        pass
+        parameters[_STEPS_PER_TIMESTEP] = self.__n_steps_per_timestep
 
     @overrides(AbstractNeuronImpl.add_state_variables)
     def add_state_variables(self, state_variables):

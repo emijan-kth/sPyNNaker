@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#include <common/neuron-typedefs.h>
-#include <common/in_spikes.h>
+#include "in_spikes_with_payload.h"
 
 #include <data_specification.h>
 #include <debug.h>
@@ -95,12 +94,37 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
     }
 
     // Process the incoming spikes
-    spike_t s;
-    uint32_t nid;
-    while (in_spikes_get_next_spike(&s)) {
-        nid = (s & NEURON_ID_MASK);
 
-        log_debug("Received spike from neuron %d", nid);
+    REAL max_membrane_voltage = 0.0;
+    uint32_t max_neuron = UINT32_MAX;
+
+    spike_t spike;
+    uint32_t nid;
+
+    union
+    {
+        REAL membrane_voltage;
+        uint32_t payload;
+    } s;
+
+    while (in_spikes_get_next_spike(&spike)) {
+        nid = (spike_key(spike) & NEURON_ID_MASK);
+        s.payload = spike_payload(spike);
+
+        log_debug("Received spike from neuron %x, membrane voltage: %12.6k", nid, s.membrane_voltage);
+
+        if (s.membrane_voltage > max_membrane_voltage)
+        {
+            max_membrane_voltage = s.membrane_voltage;
+            max_neuron = nid;
+        }
+    }
+
+    // Check if we received any spikes
+    if (max_neuron != UINT32_MAX)
+    {
+        // Process the spike with highest membrane voltage
+        log_debug("Spike with highest membrane voltage was received from neuron %x, membrane voltage: %12.6k", max_neuron, max_membrane_voltage);
     }
 }
 
@@ -126,25 +150,14 @@ static void read_parameters(WTA_config_t *config_region) {
 //! \brief Add incoming spike message (in FIQ) to circular buffer
 //! \param[in] key: The received spike
 //! \param payload: ignored
-static void incoming_spike_callback(uint key, UNUSED uint payload) {
-    log_debug("Received spike %x at time %d\n", key, time);
-
-    // If there was space to add spike to incoming spike queue
-    in_spikes_add_spike(key);
-}
-
-//! \brief Add incoming spike message (in FIQ) to circular buffer
-//! \param[in] key: The received spike
-//! \param payload: ignored
 static void incoming_spike_callback_payload(uint key, uint payload) {
-    use(payload);
+    log_debug("Received spike %x at time %d with payload %12.6k", key, time, payload);
 
-    log_debug("Received spike %x at time %d with payload %12.6k\n", key, time, payload);
+    union _spike_t spike = { .key = key, .payload = payload };
 
-    // If there was space to add spike to incoming spike queue
-    for (uint count = 0; count < payload; count ++){
-        in_spikes_add_spike(key);
-    }
+    in_spikes_add_spike(spike.pair);
+
+    in_spikes_print_buffer();
 }
 
 //! \brief Callback to store provenance data (format: neuron_provenance).
@@ -212,7 +225,6 @@ void c_main(void) {
     spin1_set_timer_tick(timer_period);
 
     // Register callbacks
-    spin1_callback_on(MC_PACKET_RECEIVED, incoming_spike_callback, MC);
     spin1_callback_on(
         MCPL_PACKET_RECEIVED, incoming_spike_callback_payload, MC);
     spin1_callback_on(TIMER_TICK, timer_callback, TIMER);

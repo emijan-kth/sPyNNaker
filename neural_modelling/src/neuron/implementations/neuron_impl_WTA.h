@@ -332,7 +332,16 @@ static void neuron_impl_do_timestep_update(
 
                 // Send the spike
                 log_debug("Neuron index %u: spike with payload: %12.6k", neuron_index, result);
-                send_spike_payload(timer_count, time, neuron_index, result);
+                
+                union
+                {
+                    state_t state;
+                    uint32_t uint;
+                } converted_result;
+
+                converted_result.state = result;
+
+                send_spike_payload(timer_count, time, neuron_index, converted_result.uint);
             }
 
             // Shape the existing input according to the included rule
