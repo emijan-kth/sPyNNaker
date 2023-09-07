@@ -25,11 +25,48 @@
 
 // ----------------------------------------------------------------------
 
-//! The structure of our configuration region in SDRAM
-typedef struct {
-    //! The (base) key
-    uint32_t key;
-} WTA_config_t;
+//! The keys to be used by the neurons (one per neuron)
+uint32_t *neuron_keys;
+
+//! A checker that says if this model should be transmitting. If set to false
+//! by the data region, then this model should not have a key.
+bool use_key;
+
+//! Latest time in a timestep that any neuron has sent a spike
+uint32_t latest_send_time = 0xFFFFFFFF;
+
+//! Earliest time in a timestep that any neuron has sent a spike
+uint32_t earliest_send_time = 0;
+
+//! The colour of the time step to handle delayed spikes
+uint32_t colour = 0;
+
+//! The number of neurons on the core
+static uint32_t n_neurons;
+
+//! The closest power of 2 >= n_neurons
+static uint32_t n_neurons_peak;
+
+//! The number of synapse types
+static uint32_t n_synapse_types;
+
+//! The mask of the colour
+static uint32_t colour_mask;
+
+//! Amount to left shift the ring buffer by to make it an input
+static uint32_t *ring_buffer_to_input_left_shifts;
+
+//! parameters that reside in the neuron_parameter_data_region
+struct neuron_core_parameters {
+    uint32_t has_key;
+    uint32_t n_neurons_to_simulate;
+    uint32_t n_neurons_peak;
+    uint32_t n_colour_bits;
+    uint32_t n_synapse_types;
+    uint32_t ring_buffer_shifts[];
+    // Following this struct in memory (as it can't be expressed in C) is:
+    // uint32_t neuron_keys[n_neurons_to_simulate];
+};
 
 //! The provenance information written on application shutdown.
 struct WTA_provenance {
@@ -43,18 +80,23 @@ struct WTA_provenance {
 // Globals
 //! The simulation time
 static uint32_t time;
-//! The (base) key
-static uint32_t key;
 //! Current simulation stop/pause time
 static uint32_t simulation_ticks;
 //! True if the simulation is running continuously
 static uint32_t infinite_run;
 
 //! DSG regions in use
-enum WTA_control_regions_e {
-    SYSTEM_REGION, //!< General simulation API control area
-    PARAMS_REGION,  //!< Configuration region for this application
-    PROVENANCE_DATA_REGION //!< Provenance region for this application
+enum regions {
+    SYSTEM_REGION,
+    CORE_PARAMS_REGION,
+    PROVENANCE_DATA_REGION,
+    PROFILER_REGION,
+    RECORDING_REGION,
+    NEURON_PARAMS_REGION,
+    CURRENT_SOURCE_PARAMS_REGION,
+    NEURON_RECORDING_REGION,
+    SDRAM_PARAMS_REGION,
+	INITIAL_VALUES_REGION
 };
 
 //! values for the priority for each callback
@@ -110,6 +152,7 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
     } s;
 
     while (in_spikes_get_next_spike(&spike)) {
+        // TODO: Calculate this properly
         nid = (spike_key(spike) & NEURON_ID_MASK);
         s.payload = spike_payload(spike);
 
@@ -128,19 +171,46 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
         // Process the spike with highest membrane voltage
         log_debug("Spike with highest membrane voltage was received from neuron %x, membrane voltage: %12.6k", max_neuron, max_membrane_voltage);
 
-        uint32_t spike_key = key + max_neuron;
+        if (use_key)
+        {
+            // TODO: Calculate this properly
+            uint32_t spike_key = neuron_keys[0] + max_neuron;
 
-        log_debug("Sending spike with key %x", spike_key);
+            log_debug("Sending spike with key %x", spike_key);
 
-        send_spike_mc(spike_key);
+            send_spike_mc(spike_key);
+        }
     }
 }
 
 //! \brief Reads the configuration
 //! \param[in] config_region: Where to read the configuration from
-static void read_parameters(WTA_config_t *config_region) {
+static bool read_parameters(struct neuron_core_parameters *config_region) {
     log_info("Reading parameters from 0x%.8x", config_region);
-    key = config_region->key;
+
+    // Check if there is a key to use
+    use_key = config_region->has_key;
+
+    // Read the neuron details
+    n_neurons = config_region->n_neurons_to_simulate;
+    n_neurons_peak = config_region->n_neurons_peak;
+    n_synapse_types = config_region->n_synapse_types;
+
+    // Get colour details
+    colour_mask = (1 << config_region->n_colour_bits) - 1;
+
+
+    // The key list comes after the ring buffer shifts
+    uint32_t *neuron_keys_sdram =
+            (uint32_t *) &config_region->ring_buffer_shifts[n_synapse_types];
+    uint32_t neuron_keys_size = n_neurons * sizeof(uint32_t);
+    neuron_keys = spin1_malloc(neuron_keys_size);
+    if (neuron_keys == NULL) {
+        log_error("Not enough memory to allocate neuron keys");
+        return false;
+    }
+    spin1_memcpy(neuron_keys, neuron_keys_sdram, neuron_keys_size);
+
 
     // Allocate the space for the schedule
     // counters = spin1_malloc(N_COUNTERS * sizeof(int));
@@ -151,8 +221,12 @@ static void read_parameters(WTA_config_t *config_region) {
     //     last_speed[i] = 0;
     // }
 
-    log_info("Key = %d",
-            key);
+    for (uint32_t i = 0; i < n_neurons; ++i)
+    {
+        log_info("Key %d = %x", i, neuron_keys[i]);
+    }
+
+    return true;
 }
 
 //! \brief Add incoming spike message (in FIQ) to circular buffer
@@ -208,7 +282,10 @@ static bool initialize(uint32_t *timer_period) {
         data_specification_get_region(PROVENANCE_DATA_REGION, ds_regions));
 
     // Get the parameters
-    read_parameters(data_specification_get_region(PARAMS_REGION, ds_regions));
+    if (!read_parameters(data_specification_get_region(CORE_PARAMS_REGION, ds_regions)))
+    {
+        return false;
+    }
 
     log_info("initialise: completed successfully");
 
