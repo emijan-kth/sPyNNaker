@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-APP = WTA
+APP = WTA_conv
 SOURCES = WTA/WTA.c
 
 include ../neural_support.mk
