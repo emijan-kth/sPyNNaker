@@ -111,6 +111,7 @@ static ConvolutionConfig *convolution_config;
 
 
 int16_t num_neurons_in;
+int16_t source_size;
 
 REAL *max_membrane_voltages;
 uint32_t *max_source_indices;
@@ -285,7 +286,16 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
 
             if (use_key)
             {
-                uint32_t neuron_id_out = source_index * num_neurons_in + neuron_id;
+                uint32_t neuron_id_out = source_index * source_size + neuron_id;
+
+                log_debug(
+                    "source_index: %x, "
+                    " source_size: %x, "
+                    " neuron_id: %x\n",
+                    source_index,
+                    source_size,
+                    neuron_id);
+
                 uint32_t key = neuron_keys[neuron_id_out];
 
                 log_debug(
@@ -370,6 +380,13 @@ bool local_only_initialise(void *address) {
 
     if (max_membrane_voltages == NULL || max_source_indices == NULL) {
         log_error("Not enough memory");
+        return false;
+    }
+
+    source_size = n_neurons / convolution_config->n_sources;
+    if (source_size * convolution_config->n_sources != n_neurons)
+    {
+        log_error("Wrong population size");
         return false;
     }
 
