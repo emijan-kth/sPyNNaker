@@ -248,7 +248,7 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
 
         //uint32_t neuron_id = key & ~s_info->key_info.mask;
 
-        uint32_t neuron_id = get_local_id(key, s_info->key_info);
+        uint32_t neuron_id_in = get_local_id(key, s_info->key_info);
 
         s.payload = spike_payload(spike);   
 
@@ -258,20 +258,20 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
             key,
             channel,
             source_index,
-            neuron_id,
+            neuron_id_in,
             s.membrane_voltage);
 
-        if (s.membrane_voltage > max_membrane_voltages[neuron_id])
+        if (s.membrane_voltage > max_membrane_voltages[neuron_id_in])
         {
-            max_membrane_voltages[neuron_id] = s.membrane_voltage;
-            max_source_indices[neuron_id] = source_index;
+            max_membrane_voltages[neuron_id_in] = s.membrane_voltage;
+            max_source_indices[neuron_id_in] = source_index;
         }
     }
 
     // For each input neuron, check if we received any spikes
-    for (int16_t neuron_id = 0; neuron_id < num_neurons_in; ++neuron_id)
+    for (int16_t neuron_id_in = 0; neuron_id_in < num_neurons_in; ++neuron_id_in)
     {
-        uint32_t source_index = max_source_indices[neuron_id];
+        uint32_t source_index = max_source_indices[neuron_id_in];
         
         if (source_index != UINT32_MAX)
         {
@@ -280,21 +280,34 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
                 "For neuron_id: %d, "
                 "spike with highest membrane voltage was received from source %d, "
                 "membrane voltage: %12.6k",
-                neuron_id,
+                neuron_id_in,
                 source_index,
-                max_membrane_voltages[neuron_id]);
+                max_membrane_voltages[neuron_id_in]);
 
             if (use_key)
             {
-                uint32_t neuron_id_out = source_index * source_size + neuron_id;
+                // Get source information
+                source_info *s_info = &(convolution_config->sources[source_index]);
+                uint32_t source_width = s_info->source_width_per_core;
+                div_const source_width_d = s_info->source_width_div;
+
+                // Calculate local_row
+                uint32_t local_row = div_by_const(neuron_id_in, source_width_d);
+
+                // TODO: Remove source_size
+                
+                uint32_t neuron_id_out = (local_row * (convolution_config->n_sources - 1) + source_index) * source_width + neuron_id_in;
+
 
                 log_debug(
-                    "source_index: %x, "
-                    " source_size: %x, "
-                    " neuron_id: %x\n",
+                    "source_index: %u, "
+                    " source_size: %u, "
+                    " neuron_id_n: %u, "
+                    " local_row: %u\n",
                     source_index,
                     source_size,
-                    neuron_id);
+                    neuron_id_in,
+                    local_row);
 
                 uint32_t key = neuron_keys[neuron_id_out];
 
@@ -389,6 +402,9 @@ bool local_only_initialise(void *address) {
         log_error("Wrong population size");
         return false;
     }
+
+    log_debug("num_neurons_in = %u", num_neurons_in);
+    log_debug("source_size = %u", source_size);
 
     // Print what we have
     for (uint32_t i = 0; i < convolution_config->n_sources; i++) {

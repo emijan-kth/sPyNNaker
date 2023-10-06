@@ -59,4 +59,9 @@ class WTAConnector(ConvolutionConnector):
                 numpy.logical_and(start_in_range, end_in_range)]
             connected.append((post, pre_in_range))
 
+        # print("\n*******\nResult of get_connected_vertices:")
+        # for i, (post, pre) in enumerate(connected):
+        #     print(f"{i}: ({pre}) -> ({post})")
+        # print("******\n")
+
         return connected
