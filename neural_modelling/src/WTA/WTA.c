@@ -111,7 +111,6 @@ static ConvolutionConfig *convolution_config;
 
 
 int16_t num_neurons_in;
-int16_t source_size;
 
 REAL *max_membrane_voltages;
 uint32_t *max_source_indices;
@@ -294,18 +293,13 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
                 // Calculate local_row
                 uint32_t local_row = div_by_const(neuron_id_in, source_width_d);
 
-                // TODO: Remove source_size
-                
                 uint32_t neuron_id_out = (local_row * (convolution_config->n_sources - 1) + source_index) * source_width + neuron_id_in;
-
 
                 log_debug(
                     "source_index: %u, "
-                    " source_size: %u, "
-                    " neuron_id_n: %u, "
+                    " neuron_id_in: %u, "
                     " local_row: %u\n",
                     source_index,
-                    source_size,
                     neuron_id_in,
                     local_row);
 
@@ -376,6 +370,7 @@ bool local_only_initialise(void *address) {
             convolution_config->post_start.col, convolution_config->post_start.row,
             convolution_config->post_end.col, convolution_config->post_end.row,
             convolution_config->post_shape.width, convolution_config->post_shape.height);
+
     log_info("num sources = %u", convolution_config->n_sources);
 
     if (convolution_config->n_sources == 0) {
@@ -388,6 +383,8 @@ bool local_only_initialise(void *address) {
     source_info *s_info_0 = &(convolution_config->sources[0]);
     num_neurons_in = s_info_0->source_height_per_core * s_info_0->source_width_per_core;
 
+    log_debug("num_neurons_in = %u", num_neurons_in);
+
     max_membrane_voltages = spin1_malloc(num_neurons_in * sizeof(max_membrane_voltages[0]));
     max_source_indices = spin1_malloc(num_neurons_in * sizeof(max_source_indices[0]));
 
@@ -395,16 +392,6 @@ bool local_only_initialise(void *address) {
         log_error("Not enough memory");
         return false;
     }
-
-    source_size = n_neurons / convolution_config->n_sources;
-    if (source_size * convolution_config->n_sources != n_neurons)
-    {
-        log_error("Wrong population size");
-        return false;
-    }
-
-    log_debug("num_neurons_in = %u", num_neurons_in);
-    log_debug("source_size = %u", source_size);
 
     // Print what we have
     for (uint32_t i = 0; i < convolution_config->n_sources; i++) {
