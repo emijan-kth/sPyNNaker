@@ -135,6 +135,17 @@ else
 	      $(CURRENT_SOURCE_H) \
 	      $(NEURON_IMPL_H) 
 		NEURON_INCLUDES := $(NEURON_INCLUDE_FILES:%=-include %)
+
+		ifndef LOCAL_ONLY_IMPL_H
+		    $(error LOCAL_ONLY_IMPL_H is not set.  Please select a local only implementation file)
+		else
+		    LOCAL_ONLY_IMPL_H := $(call replace_source_dirs,$(LOCAL_ONLY_IMPL_H))
+		endif
+
+		LOCAL_ONLY_INCLUDE_FILES := \
+			$(LOCAL_ONLY_IMPL_H)
+		LOCAL_ONLY_INCLUDES := $(LOCAL_ONLY_INCLUDE_FILES:%=-include %)
+
     endif
 endif
 
@@ -170,5 +181,9 @@ $(BUILD_DIR)neuron/neuron.o: $(MODIFIED_DIR)neuron/neuron.c
 	# neuron.o
 	-@mkdir -p $(dir $@)
 	$(CC) -DLOG_LEVEL=$(NEURON_DEBUG) $(CFLAGS) $(NEURON_INCLUDES) -o $@ $<
+
+$(LOCAL_ONLY_IMPL:%.c=$(BUILD_DIR)%.o): $(MODIFIED_DIR)$(LOCAL_ONLY_IMPL)
+	-@mkdir -p $(dir $@)
+	$(CC) -DLOG_LEVEL=$(NEURON_DEBUG) $(CFLAGS) $(LOCAL_ONLY_INCLUDES) -o $@ $<
 
 .PRECIOUS: $(MODIFIED_DIR)%.c $(MODIFIED_DIR)%.h $(LOG_DICT_FILE) $(EXTRA_PRECIOUS)
