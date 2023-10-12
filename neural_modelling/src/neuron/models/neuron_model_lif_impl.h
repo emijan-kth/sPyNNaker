@@ -196,6 +196,7 @@ static inline state_t neuron_model_state_update(
     } else {
         // countdown refractory timer
         neuron->refract_timer--;
+        log_debug("neuron in refractory period, remaining time: %d", neuron->refract_timer);
     }
     return neuron->V_membrane;
 }

@@ -20,7 +20,7 @@ NEURON_MODEL_H = $(NEURON_DIR)/neuron/models/neuron_model_lif_impl.h
 INPUT_TYPE_H = $(NEURON_DIR)/neuron/input_types/input_type_delta.h
 NEURON_IMPL_H = $(NEURON_DIR)/neuron/implementations/neuron_impl_WTA.h
 THRESHOLD_TYPE_H = $(NEURON_DIR)/neuron/threshold_types/threshold_type_static.h
-SYNAPSE_TYPE_H = $(NEURON_DIR)/neuron/synapse_types/synapse_types_presynaptic_trace_impl.h
+SYNAPSE_TYPE_H = $(NEURON_DIR)/neuron/synapse_types/synapse_types_presynaptic_trace_WTA_impl.h
 LOCAL_ONLY_IMPL = $(NEURON_DIR)/neuron/local_only/local_only_conv_impl.c
 
 include ../local_only_WTA.mk

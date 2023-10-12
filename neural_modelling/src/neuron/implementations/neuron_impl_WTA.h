@@ -256,6 +256,14 @@ static void neuron_impl_do_timestep_update(
         // Loop however many times requested; do this in reverse for efficiency,
         // and because the index doesn't actually matter
         for (uint32_t i_step = n_steps_per_timestep; i_step > 0; i_step--) {
+            bool reset = synapse_types_get_reset_input(the_synapse_type);
+
+            if (reset)
+            {
+                log_debug("Neuron index %u: reset in response to reset input", neuron_index);
+                neuron_model_has_spiked(this_neuron);            
+            }
+            
             // Get the voltage
             state_t soma_voltage = neuron_model_get_membrane_voltage(this_neuron);
 
