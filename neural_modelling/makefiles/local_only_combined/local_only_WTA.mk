@@ -149,7 +149,7 @@ OTHER_SOURCES_CONVERTED := $(call strip_source_dirs,$(OTHER_SOURCES))
 # List all the sources relative to one of SOURCE_DIRS
 SOURCES = neuron/c_main_local_only.c \
           neuron/neuron.c \
-          neuron/local_only.c \
+          neuron/local_only_WTA.c \
           $(LOCAL_ONLY_IMPL) $(OTHER_SOURCES_CONVERTED)
 
 include $(SPINN_DIRS)/make/local.mk
