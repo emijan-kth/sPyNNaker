@@ -317,6 +317,7 @@ static inline bool key_to_index_lookup(uint32_t spike, source_info **rs_info) {
         // We have a match on key
         if ((spike & s_info->key_info.mask) == s_info->key_info.key) {
         	*rs_info = s_info;
+            log_debug("Matched source: %d", i);
         	return true;
         }
     }
