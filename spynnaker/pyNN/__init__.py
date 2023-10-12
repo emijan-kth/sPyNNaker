@@ -50,7 +50,7 @@ from spynnaker.pyNN.models.neural_projections.connectors import (
     FromFileConnector, FromListConnector, IndexBasedProbabilityConnector,
     KernelConnector, MultapseConnector as FixedTotalNumberConnector,
     OneToOneConnector, SmallWorldConnector, ConvolutionConnector,
-    PoolDenseConnector, WTAConnector)
+    PoolDenseConnector, WTAConnector, WTAResetConnector)
 # synapse structures
 from spynnaker.pyNN.models.neuron.synapse_dynamics import (
     SynapseDynamicsStatic as StaticSynapse)
@@ -81,6 +81,7 @@ from spynnaker.pyNN.models.neuron.structural_plasticity.synaptogenesis\
 # local-only synapses
 from spynnaker.pyNN.models.neuron.local_only import (
     LocalOnlyConvolution as Convolution,
+    LocalOnlyConvolutionWTA as ConvolutionWTA,
     LocalOnlyPoolDense as PoolDense)
 
 # neuron stuff
@@ -158,9 +159,9 @@ __all__ = [
     'FromFileConnector', 'FromListConnector', 'IndexBasedProbabilityConnector',
     'FixedTotalNumberConnector', 'KernelConnector', 'OneToOneConnector',
     'SmallWorldConnector', 'ConvolutionConnector', 'PoolDenseConnector',
-    'WTAConnector',
+    'WTAConnector', 'WTAResetConnector',
     # Local-only
-    'Convolution', 'PoolDense',
+    'Convolution', 'ConvolutionWTA', 'PoolDense',
     # synapse structures
     'StaticSynapse',
     # plastic stuff

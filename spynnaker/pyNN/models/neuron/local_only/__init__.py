@@ -14,6 +14,11 @@
 
 from .abstract_local_only import AbstractLocalOnly
 from .local_only_convolution import LocalOnlyConvolution
+from .local_only_convolution_WTA import LocalOnlyConvolutionWTA
 from .local_only_pool_dense import LocalOnlyPoolDense
 
-__all__ = ["AbstractLocalOnly", "LocalOnlyConvolution", "LocalOnlyPoolDense"]
+__all__ = [
+    "AbstractLocalOnly",
+    "LocalOnlyConvolution",
+    "LocalOnlyConvolutionWTA",
+    "LocalOnlyPoolDense"]
