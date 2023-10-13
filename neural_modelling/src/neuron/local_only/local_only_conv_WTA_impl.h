@@ -48,7 +48,38 @@ typedef struct {
     div_const cores_per_width_div;
     //! True if source is WTA reset
     bool is_WTA_reset;
-} source_info;
+} local_only_conv_source_info;
+
+// One per connector
+typedef struct {
+	//! The shape of the kernel
+    lc_shape_t kernel;
+    //! The shape of the padding
+    lc_shape_t padding;
+    //! The index of the synapse for positive weights
+    uint16_t positive_synapse_type;
+    //! The index of the synapse for negative weights
+    uint16_t negative_synapse_type;
+    uint16_t presynaptic_trace_synapse_type;
+	//! The delay stage
+	uint16_t delay_stage;
+	//! The delay in time steps
+    uint16_t delay;
+    //! The index of the weights for the kernel
+    uint16_t kernel_index;
+    //! stride
+    lc_coord_t strides;
+    //! 1 / stride height
+    div_const stride_height_div;
+    //! 1 / stride width;
+    div_const stride_width_div;
+    //! 1 / pooling stride height
+    div_const pool_stride_height_div;
+    //! 1 / pooling stride width
+    div_const pool_stride_width_div;
+    uint16_t WTA_reset_synapse_type;
+    uint16_t alignment_padding;
+} local_only_conv_connector;
 
 typedef struct {
     lc_coord_t post_start;
@@ -57,17 +88,19 @@ typedef struct {
     uint32_t n_sources;
     uint32_t n_connectors_total;
     uint32_t n_weights_total;
-    source_info sources[];
+    local_only_conv_source_info sources[];
     // In SDRAM, after sources[n_sources] is the following:
     // connector connectors[n_connectors_total];
     // lc_weight_t[n_weights_total] weights;
-} conv_config;
+} local_only_conv_config_t;
 
-extern conv_config *local_only_conv_config;
+extern local_only_conv_config_t *local_only_conv_config;
+
+extern local_only_conv_connector *local_only_conv_connectors;
 
 static inline bool is_key_WTA_reset(uint32_t spike) {
     for (uint32_t i = 0; i < local_only_conv_config->n_sources; i++) {
-        source_info *s_info = &(local_only_conv_config->sources[i]);
+        local_only_conv_source_info *s_info = &(local_only_conv_config->sources[i]);
         if ((spike & s_info->key_info.mask) == s_info->key_info.key) {
             // We have a match on key
             log_debug("Matched source: %d", i);

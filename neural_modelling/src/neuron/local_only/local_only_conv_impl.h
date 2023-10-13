@@ -43,7 +43,36 @@ typedef struct {
     div_const source_width_last_div;
     //! Division by cores per source width
     div_const cores_per_width_div;
-} source_info;
+} local_only_conv_source_info;
+
+// One per connector
+typedef struct {
+	//! The shape of the kernel
+    lc_shape_t kernel;
+    //! The shape of the padding
+    lc_shape_t padding;
+    //! The index of the synapse for positive weights
+    uint16_t positive_synapse_type;
+    //! The index of the synapse for negative weights
+    uint16_t negative_synapse_type;
+    uint16_t presynaptic_trace_synapse_type;
+	//! The delay stage
+	uint16_t delay_stage;
+	//! The delay in time steps
+    uint16_t delay;
+    //! The index of the weights for the kernel
+    uint16_t kernel_index;
+    //! stride
+    lc_coord_t strides;
+    //! 1 / stride height
+    div_const stride_height_div;
+    //! 1 / stride width;
+    div_const stride_width_div;
+    //! 1 / pooling stride height
+    div_const pool_stride_height_div;
+    //! 1 / pooling stride width
+    div_const pool_stride_width_div;
+} local_only_conv_connector;
 
 typedef struct {
     lc_coord_t post_start;
@@ -52,10 +81,10 @@ typedef struct {
     uint32_t n_sources;
     uint32_t n_connectors_total;
     uint32_t n_weights_total;
-    source_info sources[];
+    local_only_conv_source_info sources[];
     // In SDRAM, after sources[n_sources] is the following:
     // connector connectors[n_connectors_total];
     // lc_weight_t[n_weights_total] weights;
-} conv_config;
+} local_only_conv_config_t;
 
 #endif

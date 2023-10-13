@@ -18,12 +18,13 @@
 //! \brief Implements the "local-only" handling of synapses, that is the
 //!        processing of spikes without the use of transfers from SDRAM
 
-#include "local_only.h"
-#include "local_only/local_only_conv_WTA_impl.h"
-#include <debug.h>
 #include <circular_buffer.h>
 #include <recording.h>
 #include <spin1_api.h>
+
+#include "local_only.h"
+#include "local_only/local_only_conv_WTA_impl.h"
+#include "population_table/population_table.h"
 
 //: The configuration of the local only model
 struct local_only_config {
@@ -274,7 +275,45 @@ void local_only_store_provenance(struct local_only_provenance *prov) {
     prov->max_input_buffer_size = max_input_buffer_size;
 }
 
+static inline bool key_to_index_lookup(uint32_t spike, local_only_conv_source_info **rs_info) {
+    for (uint32_t i = 0; i < local_only_conv_config->n_sources; i++) {
+        local_only_conv_source_info *s_info = &(local_only_conv_config->sources[i]);
+        // We have a match on key
+        if ((spike & s_info->key_info.mask) == s_info->key_info.key) {
+        	*rs_info = s_info;
+            log_debug("Matched source: %d", i);
+        	return true;
+        }
+    }
+    return false;
+}
+
 void process_reset_spike(
         uint32_t time, uint32_t spike, uint16_t* ring_buffers) {
     log_debug("process_reset_spike: time = %d, spike = %04x", time, spike);
+
+    local_only_conv_source_info *s_info;
+    if (!key_to_index_lookup(spike, &s_info)) {
+    	log_debug("Spike %x didn't match any connectors!", spike);
+        return;
+    }
+
+    uint32_t local_id = get_local_id(spike, s_info->key_info);
+
+    log_debug("process_reset_spike: local_id = %d", local_id);
+
+    uint32_t end = s_info->key_info.start + s_info->key_info.count;
+    for (uint32_t i = s_info->key_info.start; i < end; i++) {
+		local_only_conv_connector *connector = &(local_only_conv_connectors[i]);
+        
+        uint32_t rb_index = synapse_row_get_ring_buffer_index(
+            time,
+            connector->WTA_reset_synapse_type, local_id,
+            synapse_type_index_bits, synapse_index_bits,
+            synapse_delay_mask);
+
+        log_debug("process_reset_spike: ring buffer index = %d", rb_index);
+
+        ring_buffers[rb_index] = 1;
+    }
 }

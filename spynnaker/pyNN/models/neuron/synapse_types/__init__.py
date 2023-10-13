@@ -17,9 +17,11 @@ from .synapse_type_dual_exponential import SynapseTypeDualExponential
 from .synapse_type_exponential import SynapseTypeExponential
 from .synapse_type_delta import SynapseTypeDelta
 from .synapse_type_presynaptic_trace import SynapseTypePresynapticTrace
+from .synapse_type_presynaptic_trace_WTA import SynapseTypePresynapticTraceWTA
 from .synapse_type_alpha import SynapseTypeAlpha
 from .synapse_type_semd import SynapseTypeSEMD
 
 __all__ = ["AbstractSynapseType", "SynapseTypeDualExponential",
-           "SynapseTypeExponential", "SynapseTypeDelta", "SynapseTypePresynapticTrace",
+           "SynapseTypeExponential", "SynapseTypeDelta",
+           "SynapseTypePresynapticTrace", "SynapseTypePresynapticTraceWTA",
            "SynapseTypeAlpha", "SynapseTypeSEMD"]

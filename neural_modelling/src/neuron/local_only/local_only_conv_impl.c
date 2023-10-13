@@ -23,39 +23,14 @@
 #include "../population_table/population_table.h"
 #include "../neuron.h"
 
-// One per connector
-typedef struct {
-	//! The shape of the kernel
-    lc_shape_t kernel;
-    //! The shape of the padding
-    lc_shape_t padding;
-    //! The index of the synapse for positive weights
-    uint16_t positive_synapse_type;
-    //! The index of the synapse for negative weights
-    uint16_t negative_synapse_type;
-    uint16_t presynaptic_trace_synapse_type;
-	//! The delay stage
-	uint16_t delay_stage;
-	//! The delay in time steps
-    uint16_t delay;
-    //! The index of the weights for the kernel
-    uint16_t kernel_index;
-    //! stride
-    lc_coord_t strides;
-    //! 1 / stride height
-    div_const stride_height_div;
-    //! 1 / stride width;
-    div_const stride_width_div;
-    //! 1 / pooling stride height
-    div_const pool_stride_height_div;
-    //! 1 / pooling stride width
-    div_const pool_stride_width_div;
-} connector;
+typedef local_only_conv_source_info source_info;
+typedef local_only_conv_connector connector;
+typedef local_only_conv_config_t conv_config;
 
 // The main configuration data
 conv_config *local_only_conv_config;
 
-static connector *connectors;
+connector *local_only_conv_connectors;
 
 static lc_weight_t *weights;
 
@@ -94,13 +69,13 @@ bool local_only_impl_initialise(void *address){
     connector *sdram_connectors =
     		(connector *) &(sdram_config->sources[config->n_sources]);
     uint32_t n_connector_bytes = sizeof(connector) * config->n_connectors_total;
-    connectors = spin1_malloc(n_connector_bytes);
-    if (connectors == NULL) {
+    local_only_conv_connectors = spin1_malloc(n_connector_bytes);
+    if (local_only_conv_connectors == NULL) {
     	log_error("Can't allocate %u bytes of memory for %u connectors!",
     			n_connector_bytes, config->n_connectors_total);
     	return false;
     }
-    spin1_memcpy(connectors, sdram_connectors, n_connector_bytes);
+    spin1_memcpy(local_only_conv_connectors, sdram_connectors, n_connector_bytes);
 
     // The weights come after the connectors in SDRAM
     lc_weight_t *kernel_weights =
@@ -134,7 +109,7 @@ bool local_only_impl_initialise(void *address){
     }
 
     for (uint32_t i = 0; i < config->n_connectors_total; i++) {
-    	connector *conn = &(connectors[i]);
+    	connector *conn = &(local_only_conv_connectors[i]);
     	log_debug("Connector %u: kernel size=%u, %u", i, conn->kernel.width,
     			conn->kernel.height);
     	log_debug("    delay=%u, delay_stage=%u", conn->delay, conn->delay_stage);
@@ -337,7 +312,7 @@ void local_only_impl_process_spike(
     // compute the population-based coordinates
     uint32_t end = s_info->key_info.start + s_info->key_info.count;
     for (uint32_t i = s_info->key_info.start; i < end; i++) {
-		connector *connector = &(connectors[i]);
+		connector *connector = &(local_only_conv_connectors[i]);
 
     	// Ignore the neuron if the delay does not match
 		uint32_t first_neuron = neurons_per_core * connector->delay_stage;

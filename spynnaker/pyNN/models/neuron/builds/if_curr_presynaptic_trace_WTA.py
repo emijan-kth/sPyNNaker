@@ -18,7 +18,7 @@ from spynnaker.pyNN.models.neuron.neuron_models import (
     NeuronModelLeakyIntegrateAndFire)
 from spynnaker.pyNN.models.neuron.input_types import InputTypeDelta
 from spynnaker.pyNN.models.neuron.threshold_types import ThresholdTypeStatic
-from spynnaker.pyNN.models.neuron.synapse_types import SynapseTypePresynapticTrace
+from spynnaker.pyNN.models.neuron.synapse_types import SynapseTypePresynapticTraceWTA
 
 
 class IFCurrPresynapticTraceWTA(AbstractPyNNNeuronModelStandard):
@@ -75,7 +75,7 @@ class IFCurrPresynapticTraceWTA(AbstractPyNNNeuronModelStandard):
         # pylint: disable=too-many-arguments
         neuron_model = NeuronModelLeakyIntegrateAndFire(
             v, v_rest, tau_m, cm, i_offset, v_reset, tau_refrac)
-        synapse_type = SynapseTypePresynapticTrace(isyn_exc, isyn_inh, tau_syn_trace, alpha, isyn_trace)
+        synapse_type = SynapseTypePresynapticTraceWTA(isyn_exc, isyn_inh, tau_syn_trace, alpha, isyn_trace)
         input_type = InputTypeDelta()
         threshold_type = ThresholdTypeStatic(v_thresh)
 
