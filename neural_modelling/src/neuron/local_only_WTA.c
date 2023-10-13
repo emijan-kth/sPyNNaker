@@ -45,6 +45,9 @@ static struct local_only_config config;
 //! The input buffer for spikes received
 static circular_buffer input_buffer;
 
+//! The input buffer for reset spikes received
+static circular_buffer reset_input_buffer;
+
 //! Ring buffers to add weights to on spike processing
 static uint16_t *ring_buffers;
 
@@ -79,6 +82,8 @@ uint32_t synapse_index_bits;
 //! The region where packets-per-timestep are stored
 uint32_t p_per_ts_region;
 
+static void process_reset_spike(
+        uint32_t time, uint32_t spike, uint16_t* ring_buffers);
 
 //! The number of packets received this time step for recording
 static struct {
@@ -125,17 +130,20 @@ void mc_rcv_payload_callback(uint key, uint n_spikes) {
     log_debug("Recived packet with key: %x, payload: %d", key, n_spikes);
     n_spikes_received += 1;
 
+    // Check of any one spike can be added to the circular buffer
+    bool added = false;
+
     // Check if spike comes from a WTA_reset source
     if (is_key_WTA_reset(key))
     {
         log_debug("Is WTA reset");
-        return;
+        added |= circular_buffer_add(reset_input_buffer, key);
     }
-
-    // Check of any one spike can be added to the circular buffer
-    bool added = false;
-    for (uint32_t i = n_spikes; i > 0; i--) {
-        added |= circular_buffer_add(input_buffer, key);
+    else
+    {
+        for (uint32_t i = n_spikes; i > 0; i--) {
+            added |= circular_buffer_add(input_buffer, key);
+        }
     }
 
     // If any spikes were added, update the buffer maximum
@@ -153,6 +161,17 @@ void mc_rcv_payload_callback(uint key, uint n_spikes) {
 void process_callback(uint time, UNUSED uint unused1) {
     uint32_t spike;
     uint32_t cspr = spin1_int_disable();
+
+    // Prioritize reset spikes
+
+    // While there is a spike to process, pull it out of the buffer
+    while (process_loop_running && circular_buffer_get_next(reset_input_buffer, &spike)) {
+        spin1_mode_restore(cspr);
+
+        // Process the spike using the specific local-only implementation
+        process_reset_spike(time, spike, ring_buffers);
+        cspr = spin1_int_disable();
+    }
 
     // While there is a spike to process, pull it out of the buffer
     while (process_loop_running && circular_buffer_get_next(input_buffer, &spike)) {
@@ -188,6 +207,14 @@ bool local_only_initialise(void *local_only_addr, void *local_only_params_addr,
         return false;
     }
     log_info("Created input buffer with %u entries", config.input_buffer_size);
+
+    reset_input_buffer = circular_buffer_initialize(config.input_buffer_size);
+    if (reset_input_buffer == NULL) {
+        log_error("Error setting up reset input buffer of size %u",
+                config.input_buffer_size);
+        return false;
+    }
+    log_info("Created reset input buffer with %u entries", config.input_buffer_size);
 
     // Make some buffers
     synapse_type_index_bits = config.log_n_neurons + config.log_n_synapse_types;
@@ -236,6 +263,7 @@ void local_only_clear_input(uint32_t time) {
     n_spikes_dropped += n_spikes_left;
     if (config.clear_input_buffer) {
         circular_buffer_clear(input_buffer);
+        circular_buffer_clear(reset_input_buffer);
     }
 }
 
@@ -244,4 +272,9 @@ void local_only_store_provenance(struct local_only_provenance *prov) {
     prov->n_spikes_dropped = n_spikes_dropped;
     prov->n_spikes_lost_from_input = circular_buffer_get_n_buffer_overflows(input_buffer);
     prov->max_input_buffer_size = max_input_buffer_size;
+}
+
+void process_reset_spike(
+        uint32_t time, uint32_t spike, uint16_t* ring_buffers) {
+    log_debug("process_reset_spike: time = %d, spike = %04x", time, spike);
 }
