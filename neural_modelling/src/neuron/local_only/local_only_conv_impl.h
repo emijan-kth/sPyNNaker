@@ -16,11 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef _LOCAL_ONLY_CONV_WTA_IMPL_H_
-#define _LOCAL_ONLY_CONV_WTA_IMPL_H_
-
-#include <stdlib.h>
-#include <debug.h>
+#ifndef _LOCAL_ONLY_CONV_IMPL_H_
+#define _LOCAL_ONLY_CONV_IMPL_H_
 
 #include "local_only_impl.h"
 #include "local_only_2d_common.h"
@@ -46,8 +43,6 @@ typedef struct {
     div_const source_width_last_div;
     //! Division by cores per source width
     div_const cores_per_width_div;
-    //! True if source is WTA reset
-    bool is_WTA_reset;
 } source_info;
 
 typedef struct {
@@ -62,19 +57,5 @@ typedef struct {
     // connector connectors[n_connectors_total];
     // lc_weight_t[n_weights_total] weights;
 } conv_config;
-
-extern conv_config *local_only_conv_config;
-
-static inline bool is_key_WTA_reset(uint32_t spike) {
-    for (uint32_t i = 0; i < local_only_conv_config->n_sources; i++) {
-        source_info *s_info = &(local_only_conv_config->sources[i]);
-        if ((spike & s_info->key_info.mask) == s_info->key_info.key) {
-            // We have a match on key
-            log_debug("Matched source: %d", i);
-            return s_info->is_WTA_reset;
-        }
-    }
-    return false;
-}
 
 #endif
