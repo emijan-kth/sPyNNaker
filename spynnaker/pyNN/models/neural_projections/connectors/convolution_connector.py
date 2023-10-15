@@ -238,6 +238,12 @@ class ConvolutionConnector(AbstractConnector):
 
     @overrides(AbstractConnector.validate_connection)
     def validate_connection(self, application_edge, synapse_info):
+        from  spynnaker.pyNN.models.neuron.local_only import local_only_convolution
+        if not isinstance(synapse_info.synapse_dynamics, local_only_convolution.LocalOnlyConvolution):
+            raise SynapticConfigurationException(
+                "This connector must have a synapse_type of"
+                " Convolution")
+
         pre = application_edge.pre_vertex
         post = application_edge.post_vertex
         if len(pre.atoms_shape) != 2 or len(post.atoms_shape) != 2:

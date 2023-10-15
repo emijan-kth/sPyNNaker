@@ -17,7 +17,7 @@ class ConvolutionWTAConnector(convolution_connector.ConvolutionConnector):
 
     @overrides(convolution_connector.ConvolutionConnector.validate_connection)
     def validate_connection(self, application_edge, synapse_info):
-        if not type(synapse_info.synapse_dynamics) is local_only_convolution_WTA.LocalOnlyConvolutionWTA:
+        if not isinstance(synapse_info.synapse_dynamics, local_only_convolution_WTA.LocalOnlyConvolutionWTA):
             raise SynapticConfigurationException(
                 "This connector must have a synapse_type of"
                 " ConvolutionWTA")
@@ -52,7 +52,7 @@ class ConvolutionWTAResetConnector(ConvolutionWTAConnector):
 
     @overrides(convolution_connector.ConvolutionConnector.validate_connection)
     def validate_connection(self, application_edge, synapse_info):
-        if not type(synapse_info.synapse_dynamics) is local_only_convolution_WTA.LocalOnlyConvolutionWTA:
+        if not isinstance(synapse_info.synapse_dynamics, local_only_convolution_WTA.LocalOnlyConvolutionWTA):
             raise SynapticConfigurationException(
                 "This connector must have a synapse_type of"
                 " ConvolutionWTA")

@@ -202,6 +202,11 @@ class LocalOnlyConvolutionWTA(local_only_convolution.LocalOnlyConvolution):
         post = incoming_projection._projection_edge.post_vertex
         conn = incoming_projection._synapse_information.connector
         
+        if not isinstance(conn, convolution_wta_connector.ConvolutionWTAConnector):
+            raise SynapticConfigurationException(
+                "Only ConvolutionWTAConnector can be used with a synapse type"
+                " of ConvolutionWTA")
+
         super_indices = super().get_auxiliary_synapse_indices(incoming_projection)
         return (() if super_indices is None else super_indices) + \
             (post.get_synapse_id_by_target(conn.WTA_reset_receptor_type),)
