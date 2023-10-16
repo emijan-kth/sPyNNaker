@@ -1,20 +1,63 @@
 import numpy
 from spinn_utilities.overrides import overrides
-from .convolution_connector import ConvolutionConnector
+from spinn_front_end_common.utilities.constants import BYTES_PER_WORD
+from spynnaker.pyNN.exceptions import SynapticConfigurationException
+from . import convolution_connector
+import spynnaker.pyNN.models.neuron.local_only.local_only_convolution_WTA as local_only_convolution_WTA
 from spynnaker.pyNN.utilities.constants import SPIKE_PARTITION_ID
 
-class WTAResetConnector(ConvolutionConnector):
+
+CONNECTOR_CONFIG_SIZE = convolution_connector.CONNECTOR_CONFIG_SIZE + BYTES_PER_WORD
+
+class ConvolutionWTAConnector(convolution_connector.ConvolutionConnector):
+
+    @property
+    def WTA_reset_receptor_type(self):
+        return "WTA-reset"
+
+    @overrides(convolution_connector.ConvolutionConnector.validate_connection)
+    def validate_connection(self, application_edge, synapse_info):
+        if not isinstance(synapse_info.synapse_dynamics, local_only_convolution_WTA.LocalOnlyConvolutionWTA):
+            raise SynapticConfigurationException(
+                "This connector must have a synapse_type of"
+                " ConvolutionWTA")
+        super().validate_connection(application_edge, synapse_info)
+
+    @property
+    @overrides(convolution_connector.ConvolutionConnector.parameters_n_bytes)
+    def parameters_n_bytes(self):   
+        return CONNECTOR_CONFIG_SIZE
+
+    @overrides(convolution_connector.ConvolutionConnector.get_local_only_data)
+    def get_local_only_data(
+            self, app_edge, local_delay, delay_stage, weight_index):
+        data = super().get_local_only_data(app_edge, local_delay, delay_stage, weight_index)
+
+        WTA_reset_synapse_type = app_edge.post_vertex.get_synapse_id_by_target(
+            self.WTA_reset_receptor_type)
+
+        # Produce the values needed
+        short_values = numpy.array([
+            WTA_reset_synapse_type, 0], dtype="uint16")
+        
+        return numpy.concatenate((data, short_values.view("uint32")))
+
+
+class ConvolutionWTAResetConnector(ConvolutionWTAConnector):
 
     def __init__(self, num_channels):
-        super(WTAResetConnector, self).__init__(((0,),))
+        super().__init__(((0,),))
 
         self.num_channels = num_channels
 
-    @overrides(ConvolutionConnector.validate_connection)
+    @overrides(convolution_connector.ConvolutionConnector.validate_connection)
     def validate_connection(self, application_edge, synapse_info):
-        pass
+        if not isinstance(synapse_info.synapse_dynamics, local_only_convolution_WTA.LocalOnlyConvolutionWTA):
+            raise SynapticConfigurationException(
+                "This connector must have a synapse_type of"
+                " ConvolutionWTA")
 
-    @overrides(ConvolutionConnector.get_connected_vertices)
+    @overrides(convolution_connector.ConvolutionConnector.get_connected_vertices)
     def get_connected_vertices(self, s_info, source_vertex, target_vertex):
         pre_vertices = numpy.array(
             source_vertex.splitter.get_out_going_vertices(SPIKE_PARTITION_ID))
@@ -24,7 +67,7 @@ class WTAResetConnector(ConvolutionConnector):
         pre_slices_x = [vtx_slice.get_slice(0) for vtx_slice in pre_slices]
         pre_slices_y = [vtx_slice.get_slice(1) for vtx_slice in pre_slices]
 
-        pre_ranges_in_post = [[[py.start * self.num_channels, px.start], [(py.stop * self.num_channels) - 1, px.stop - 1]]
+        pre_ranges_in_post = [[[py.start, px.start], [py.stop - 1, px.stop - 1]]
                       for px, py in zip(pre_slices_x, pre_slices_y)]
 
         pre_ranges_in_post = numpy.array(pre_ranges_in_post)

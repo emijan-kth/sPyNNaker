@@ -17,83 +17,20 @@
  */
 //! \file DTCM-only convolutional processing implementation
 
-#include "local_only_impl.h"
-#include "local_only_2d_common.h"
 #include <stdlib.h>
 #include <debug.h>
 #include <stdfix-full-iso.h>
 #include "../population_table/population_table.h"
 #include "../neuron.h"
 
-// One per connector
-typedef struct {
-	//! The shape of the kernel
-    lc_shape_t kernel;
-    //! The shape of the padding
-    lc_shape_t padding;
-    //! The index of the synapse for positive weights
-    uint16_t positive_synapse_type;
-    //! The index of the synapse for negative weights
-    uint16_t negative_synapse_type;
-    uint16_t presynaptic_trace_synapse_type;
-	//! The delay stage
-	uint16_t delay_stage;
-	//! The delay in time steps
-    uint16_t delay;
-    //! The index of the weights for the kernel
-    uint16_t kernel_index;
-    //! stride
-    lc_coord_t strides;
-    //! 1 / stride height
-    div_const stride_height_div;
-    //! 1 / stride width;
-    div_const stride_width_div;
-    //! 1 / pooling stride height
-    div_const pool_stride_height_div;
-    //! 1 / pooling stride width
-    div_const pool_stride_width_div;
-} connector;
-
-typedef struct {
-	//! Information about the key
-	key_info key_info;
-	//! The source population height per core
-	uint32_t source_height_per_core: 16;
-	//! The source population width per core
-	uint32_t source_width_per_core: 16;
-	//! The source population height on the last core in a column
-	uint32_t source_height_last_core: 16;
-	//! The source population width on the last core on a row
-	uint32_t source_width_last_core: 16;
-	//! The number cores in a height of the source
-	uint32_t cores_per_source_height: 16;
-    //! Number of cores in a width of the source
-    uint32_t cores_per_source_width: 16;
-	//! Used to calculate division by the source width per core efficiently
-    div_const source_width_div;
-    //! Division by last core width
-    div_const source_width_last_div;
-    //! Division by cores per source width
-    div_const cores_per_width_div;
-} source_info;
-
-typedef struct {
-    lc_coord_t post_start;
-    lc_coord_t post_end;
-    lc_shape_t post_shape;
-    uint32_t n_sources;
-    uint32_t n_connectors_total;
-    uint32_t n_weights_total;
-    source_info sources[];
-    // In SDRAM, after sources[n_sources] is the following:
-    // connector connectors[n_connectors_total];
-    // lc_weight_t[n_weights_total] weights;
-} conv_config;
+typedef local_only_conv_source_info source_info;
+typedef local_only_conv_connector connector;
+typedef local_only_conv_config_t conv_config;
 
 // The main configuration data
-static conv_config *config;
+conv_config *local_only_conv_config;
 
-static connector *connectors;
+connector *local_only_conv_connectors;
 
 static lc_weight_t *weights;
 
@@ -107,7 +44,10 @@ bool local_only_impl_initialise(void *address){
     conv_config* sdram_config = address;
     uint32_t n_bytes = sizeof(conv_config) +
     		(sizeof(source_info) * sdram_config->n_sources);
-    config = spin1_malloc(n_bytes);
+    local_only_conv_config = spin1_malloc(n_bytes);
+
+    conv_config *config = local_only_conv_config;
+    
     if (config == NULL) {
     	log_error("Can't allocate memory for config!");
     	return false;
@@ -129,13 +69,13 @@ bool local_only_impl_initialise(void *address){
     connector *sdram_connectors =
     		(connector *) &(sdram_config->sources[config->n_sources]);
     uint32_t n_connector_bytes = sizeof(connector) * config->n_connectors_total;
-    connectors = spin1_malloc(n_connector_bytes);
-    if (connectors == NULL) {
+    local_only_conv_connectors = spin1_malloc(n_connector_bytes);
+    if (local_only_conv_connectors == NULL) {
     	log_error("Can't allocate %u bytes of memory for %u connectors!",
     			n_connector_bytes, config->n_connectors_total);
     	return false;
     }
-    spin1_memcpy(connectors, sdram_connectors, n_connector_bytes);
+    spin1_memcpy(local_only_conv_connectors, sdram_connectors, n_connector_bytes);
 
     // The weights come after the connectors in SDRAM
     lc_weight_t *kernel_weights =
@@ -169,7 +109,7 @@ bool local_only_impl_initialise(void *address){
     }
 
     for (uint32_t i = 0; i < config->n_connectors_total; i++) {
-    	connector *conn = &(connectors[i]);
+    	connector *conn = &(local_only_conv_connectors[i]);
     	log_debug("Connector %u: kernel size=%u, %u", i, conn->kernel.width,
     			conn->kernel.height);
     	log_debug("    delay=%u, delay_stage=%u", conn->delay, conn->delay_stage);
@@ -216,6 +156,8 @@ static inline void do_convolution_operation(
     log_debug("pre row %d, col %d AS post row %d, col %d",
             pre_coord.row, pre_coord.col, post_coord.row, post_coord.col);
     lc_weight_t *connector_weights = &weights[connector->kernel_index];
+
+    conv_config *config = local_only_conv_config;
 
     int32_t kw = connector->kernel.width;
     for (int32_t i_row = start_i.row, tmp_row = post_coord.row; i_row < connector->kernel.height; i_row += connector->strides.row, --tmp_row) {
@@ -312,8 +254,8 @@ static inline bool is_last_core_in_col(uint32_t core_row, source_info *s_info) {
 }
 
 static inline bool key_to_index_lookup(uint32_t spike, source_info **rs_info) {
-    for (uint32_t i = 0; i < config->n_sources; i++) {
-        source_info *s_info = &(config->sources[i]);
+    for (uint32_t i = 0; i < local_only_conv_config->n_sources; i++) {
+        source_info *s_info = &(local_only_conv_config->sources[i]);
         // We have a match on key
         if ((spike & s_info->key_info.mask) == s_info->key_info.key) {
         	*rs_info = s_info;
@@ -370,7 +312,7 @@ void local_only_impl_process_spike(
     // compute the population-based coordinates
     uint32_t end = s_info->key_info.start + s_info->key_info.count;
     for (uint32_t i = s_info->key_info.start; i < end; i++) {
-		connector *connector = &(connectors[i]);
+		connector *connector = &(local_only_conv_connectors[i]);
 
     	// Ignore the neuron if the delay does not match
 		uint32_t first_neuron = neurons_per_core * connector->delay_stage;

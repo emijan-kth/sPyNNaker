@@ -40,7 +40,7 @@ class AbstractSupportsSignedWeights(object, metaclass=AbstractBase):
         """
 
     @abstractmethod
-    def get_auxiliary_synapse_index(self, incoming_projection):
+    def get_auxiliary_synapse_indices(self, incoming_projection):
         """
         """
 

@@ -34,8 +34,8 @@ from .small_world_connector import SmallWorldConnector
 from .kernel_connector import KernelConnector
 from .convolution_connector import ConvolutionConnector
 from .pool_dense_connector import PoolDenseConnector
+from .convolution_wta_connector import ConvolutionWTAConnector, ConvolutionWTAResetConnector
 from .wta_connector import WTAConnector
-from .wta_reset_connector import WTAResetConnector
 
 __all__ = ["AbstractConnector", "AbstractGenerateConnectorOnMachine",
            "AbstractGenerateConnectorOnHost", "AllToAllConnector",
@@ -46,4 +46,5 @@ __all__ = ["AbstractConnector", "AbstractGenerateConnectorOnMachine",
            "FromListConnector", "IndexBasedProbabilityConnector",
            "KernelConnector", "ConvolutionConnector", "PoolDenseConnector",
            "MultapseConnector", "OneToOneConnector", "SmallWorldConnector",
-           "WTAConnector", "WTAResetConnector"]
+           "ConvolutionWTAConnector", "ConvolutionWTAResetConnector"
+           "WTAConnector"]

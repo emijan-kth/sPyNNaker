@@ -124,15 +124,19 @@ class WTAImpl(AbstractNeuronImpl):
 
     @overrides(AbstractNeuronImpl.get_n_synapse_types)
     def get_n_synapse_types(self):
-        return 1
+        return 2
 
     @overrides(AbstractNeuronImpl.get_synapse_id_by_target)
     def get_synapse_id_by_target(self, target):
-        return 0
+        if target == "excitatory":
+            return 0
+        elif target == "inhibitory":
+            return 1
+        return None
 
     @overrides(AbstractNeuronImpl.get_synapse_targets)
     def get_synapse_targets(self):
-        return "excitatory"
+        return "excitatory", "inhibitory"
 
     @overrides(AbstractNeuronImpl.get_recordable_variables)
     def get_recordable_variables(self):

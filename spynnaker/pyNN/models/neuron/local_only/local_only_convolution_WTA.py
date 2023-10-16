@@ -17,8 +17,8 @@ from spinn_utilities.overrides import overrides
 from spinn_front_end_common.interface.ds import DataType
 from spinn_front_end_common.utilities.constants import (
     BYTES_PER_SHORT, BYTES_PER_WORD)
-from spynnaker.pyNN.models.neural_projections.connectors import (
-    ConvolutionConnector, WTAResetConnector)
+from spynnaker.pyNN.exceptions import SynapticConfigurationException
+import spynnaker.pyNN.models.neural_projections.connectors.convolution_wta_connector as convolution_wta_connector
 from spynnaker.pyNN.models.common.local_only_2d_common import (
     get_div_const, get_rinfo_for_source, get_sources_for_target,
     BITS_PER_SHORT, N_COLOUR_BITS_BITS, KEY_INFO_SIZE,
@@ -44,7 +44,7 @@ class LocalOnlyConvolutionWTA(local_only_convolution.LocalOnlyConvolution):
 
     @overrides(local_only_convolution.LocalOnlyConvolution.merge)
     def merge(self, synapse_dynamics):  
-        if not isinstance(synapse_dynamics, LocalOnlyConvolutionWTA):
+        if not type(synapse_dynamics) is LocalOnlyConvolutionWTA:
             raise SynapticConfigurationException(
                 "All targets of this Population must have a synapse_type of"
                 " ConvolutionWTA")
@@ -60,9 +60,9 @@ class LocalOnlyConvolutionWTA(local_only_convolution.LocalOnlyConvolution):
         for incoming in incoming_projections:
             # pylint: disable=protected-access
             s_info = incoming._synapse_information
-            if not isinstance(s_info.connector, ConvolutionConnector):
+            if not isinstance(s_info.connector, convolution_wta_connector.ConvolutionWTAConnector):
                 raise SynapticConfigurationException(
-                    "Only ConvolutionConnector can be used with a synapse type"
+                    "Only ConvolutionWTAConnector can be used with a synapse type"
                     " of ConvolutionWTA")
             # pylint: disable=protected-access
             app_edge = incoming._projection_edge
@@ -108,7 +108,7 @@ class LocalOnlyConvolutionWTA(local_only_convolution.LocalOnlyConvolution):
                 # pylint: disable=protected-access
                 conn = source.projection._synapse_information.connector
 
-                if isinstance(conn, WTAResetConnector):
+                if isinstance(conn, convolution_wta_connector.ConvolutionWTAResetConnector):
                     is_WTA_reset = True
 
                 app_edge = source.projection._projection_edge
@@ -196,3 +196,17 @@ class LocalOnlyConvolutionWTA(local_only_convolution.LocalOnlyConvolution):
         spec.write_array(
             numpy.concatenate(weight_data, dtype="int16").view("uint32"))
 
+    @overrides(local_only_convolution.LocalOnlyConvolution.get_auxiliary_synapse_indices)
+    def get_auxiliary_synapse_indices(self, incoming_projection):
+        # pylint: disable=protected-access
+        post = incoming_projection._projection_edge.post_vertex
+        conn = incoming_projection._synapse_information.connector
+        
+        if not isinstance(conn, convolution_wta_connector.ConvolutionWTAConnector):
+            raise SynapticConfigurationException(
+                "Only ConvolutionWTAConnector can be used with a synapse type"
+                " of ConvolutionWTA")
+
+        super_indices = super().get_auxiliary_synapse_indices(incoming_projection)
+        return (() if super_indices is None else super_indices) + \
+            (post.get_synapse_id_by_target(conn.WTA_reset_receptor_type),)

@@ -64,7 +64,7 @@ class LocalOnlyConvolution(AbstractLocalOnly, AbstractSupportsSignedWeights):
 
     @overrides(AbstractLocalOnly.merge)
     def merge(self, synapse_dynamics):
-        if not isinstance(synapse_dynamics, LocalOnlyConvolution):
+        if not type(synapse_dynamics) is LocalOnlyConvolution:
             raise SynapticConfigurationException(
                 "All targets of this Population must have a synapse_type of"
                 " Convolution")
@@ -257,12 +257,15 @@ class LocalOnlyConvolution(AbstractLocalOnly, AbstractSupportsSignedWeights):
         conn = incoming_projection._synapse_information.connector
         return post.get_synapse_id_by_target(conn.negative_receptor_type)
 
-    @overrides(AbstractSupportsSignedWeights.get_auxiliary_synapse_index)
-    def get_auxiliary_synapse_index(self, incoming_projection):
+    @overrides(AbstractSupportsSignedWeights.get_auxiliary_synapse_indices)
+    def get_auxiliary_synapse_indices(self, incoming_projection):
         # pylint: disable=protected-access
         post = incoming_projection._projection_edge.post_vertex
         conn = incoming_projection._synapse_information.connector
-        return post.get_synapse_id_by_target(conn.presynaptic_trace_receptor_type)
+        
+        index = post.get_synapse_id_by_target(conn.presynaptic_trace_receptor_type)
+
+        return (index,) if index is not None else None
 
     @overrides(AbstractSupportsSignedWeights.get_maximum_positive_weight)
     def get_maximum_positive_weight(self, incoming_projection):
