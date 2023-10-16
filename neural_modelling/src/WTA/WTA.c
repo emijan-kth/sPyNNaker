@@ -306,7 +306,7 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
                 uint32_t key = neuron_keys[neuron_id_out];
 
                 log_debug(
-                    "Sending spike with outgoing neuron_id %x, "
+                    "Sending spike with outgoing neuron_id %u, "
                     " key: %x",
                     neuron_id_out,
                     key);
