@@ -67,7 +67,7 @@ class ConvolutionWTAResetConnector(ConvolutionWTAConnector):
         pre_slices_x = [vtx_slice.get_slice(0) for vtx_slice in pre_slices]
         pre_slices_y = [vtx_slice.get_slice(1) for vtx_slice in pre_slices]
 
-        pre_ranges_in_post = [[[py.start * self.num_channels, px.start], [(py.stop * self.num_channels) - 1, px.stop - 1]]
+        pre_ranges_in_post = [[[py.start, px.start], [py.stop - 1, px.stop - 1]]
                       for px, py in zip(pre_slices_x, pre_slices_y)]
 
         pre_ranges_in_post = numpy.array(pre_ranges_in_post)
@@ -102,9 +102,9 @@ class ConvolutionWTAResetConnector(ConvolutionWTAConnector):
                 numpy.logical_and(start_in_range, end_in_range)]
             connected.append((post, pre_in_range))
 
-        # print("\n*******\nResult of get_connected_vertices:")
-        # for i, (post, pre) in enumerate(connected):
-        #     print(f"{i}: ({pre}) -> ({post})")
-        # print("******\n")
+        print("\n*******\nResult of get_connected_vertices:")
+        for i, (post, pre) in enumerate(connected):
+            print(f"{i}: ({pre}) -> ({post})")
+        print("******\n")
 
         return connected
