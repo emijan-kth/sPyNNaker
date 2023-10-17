@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy
-from data_specification.enums import DataType
+from spinn_front_end_common.interface.ds import DataType
 from pyNN.random import RandomDistribution, available_distributions
 from spinn_front_end_common.utilities.constants import BYTES_PER_WORD
 
@@ -59,11 +59,9 @@ PARAM_TYPE_BY_NAME = {
     "normal": 2,
     "normal_clipped": 3,
     "normal_clipped_to_boundary": 4,
-    "exponential": 5
+    "exponential": 5,
+    "exponential_clipped": 6
 }
-
-#: ID for the convolution kernel generator.
-PARAM_TYPE_KERNEL = 6
 
 
 def param_generator_id(value):
@@ -105,7 +103,7 @@ def param_generator_params(values):
     Get the parameter generator parameters as a numpy array.
 
     :param values:
-    :type values: int or ~pyNN.random.NumpyRNG
+    :type values: int or ~pyNN.random.RandomDistribution
     :rtype: ~numpy.ndarray
     """
     if numpy.isscalar(values):
@@ -137,7 +135,7 @@ def param_generator_params_size_in_bytes(values):
     Get the size of the parameter generator parameters in bytes.
 
     :param values:
-    :type values: int or ~pyNN.random.NumpyRNG
+    :type values: int or ~pyNN.random.RandomDistribution
     :rtype: int
     :raises TypeError: If `values` is of an unsupported data type
     """

@@ -17,7 +17,6 @@ import logging
 import numpy
 from spinn_utilities.config_holder import get_config_bool
 from spinn_utilities.log import FormatAdapter
-from pyNN import common as pynn_common
 from pyNN.recording.files import StandardTextFile
 from pyNN.space import Space as PyNNSpace
 from spinn_utilities.logger_utils import warn_once
@@ -139,12 +138,10 @@ class Projection(object):
         #  when needed)
         post_vertex.set_synapse_dynamics(synapse_dynamics)
 
-        # get rng if needed
-        rng = connector.rng if hasattr(connector, "rng") else None
         # Set and store synapse information for future processing
         self.__synapse_information = SynapseInformation(
             connector, pre_synaptic_population, post_synaptic_population,
-            pre_is_view, post_is_view, rng, synapse_dynamics,
+            pre_is_view, post_is_view, synapse_dynamics,
             synaptic_type, receptor_type, synapse_type_from_dynamics,
             synapse_dynamics.weight, synapse_dynamics.delay)
 
@@ -484,86 +481,6 @@ class Projection(object):
             Not implemented.
         """
         _we_dont_do_this_now()
-
-    def getWeights(self, format='list',  # @ReservedAssignment
-                   gather=True):
-        """
-        .. deprecated:: 5.0
-            Use ``get('weight')`` instead.
-        """
-        logger.warning("getWeights is deprecated.  Use get('weight') instead")
-        return self.get('weight', format, gather, with_address=False)
-
-    def getDelays(self, format='list',  # @ReservedAssignment
-                  gather=True):
-        """
-        .. deprecated:: 5.0
-            Use ``get('delay')`` instead.
-        """
-        logger.warning("getDelays is deprecated.  Use get('delay') instead")
-        return self.get('delay', format, gather, with_address=False)
-
-    def getSynapseDynamics(self, parameter_name,
-                           format='list',  # @ReservedAssignment
-                           gather=True):
-        """
-        .. deprecated:: 5.0
-            Use ``get(parameter_name)`` instead.
-        """
-        logger.warning(
-            "getSynapseDynamics is deprecated. Use get(parameter_name)"
-            " instead")
-        return self.get(parameter_name, format, gather, with_address=False)
-
-    def saveConnections(self, file,  # @ReservedAssignment
-                        gather=True, compatible_output=True):
-        """
-        .. deprecated:: 5.0
-            Use ``save('all')`` instead.
-        """
-        if not compatible_output:
-            logger.warning("SpiNNaker only supports compatible_output=True.")
-        logger.warning(
-            "saveConnections is deprecated. Use save('all') instead")
-        self.save('all', file, format='list', gather=gather)
-
-    def printWeights(self, file, format='list',  # @ReservedAssignment
-                     gather=True):
-        """
-        .. deprecated:: 5.0
-            Use ``save('weight')`` instead.
-        """
-        logger.warning(
-            "printWeights is deprecated. Use save('weight') instead")
-        self.save('weight', file, format, gather)
-
-    def printDelays(self, file, format='list',  # @ReservedAssignment
-                    gather=True):
-        """
-        .. deprecated:: 5.0
-            Use ``save('delay')`` instead.
-
-        Print synaptic weights to file. In the array format, zeros are
-        printed for non-existent connections.
-        """
-        logger.warning("printDelays is deprecated. Use save('delay') instead")
-        self.save('delay', file, format, gather)
-
-    def weightHistogram(self, min=None, max=None,  # @ReservedAssignment
-                        nbins=10):
-        """
-        .. deprecated:: 5.0
-            Use ``numpy.histogram`` on the weights instead.
-
-        Return a histogram of synaptic weights.
-        If ``min`` and ``max`` are not given, the minimum and maximum weights
-        are calculated automatically.
-        """
-        logger.warning(
-            "weightHistogram is deprecated. Use numpy.histogram function"
-            " instead")
-        pynn_common.Projection.weightHistogram(
-            self, min=min, max=max, nbins=nbins)
 
     def size(self, gather=True):  # @UnusedVariable
         # pylint: disable=unused-argument
