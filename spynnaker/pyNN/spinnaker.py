@@ -22,7 +22,8 @@ from pyNN.common import control as pynn_control
 from pyNN import __version__ as pynn_version
 
 from spinn_utilities.log import FormatAdapter
-from spinn_utilities.config_holder import get_config_bool, get_config_str
+from spinn_utilities.config_holder import (
+    get_config_bool, get_config_str_or_none)
 from spinn_utilities.overrides import overrides
 
 from spinn_front_end_common.interface.abstract_spinnaker_base import (
@@ -47,8 +48,7 @@ from spynnaker.pyNN.extra_algorithms.splitter_components import (
     spynnaker_splitter_selector)
 from spynnaker.pyNN.utilities import constants
 from spynnaker.pyNN.utilities.neo_buffer_database import NeoBufferDatabase
-from spynnaker.pyNN.utilities.utility_calls import (
-    moved_in_v7_warning)
+
 
 logger = FormatAdapter(logging.getLogger(__name__))
 
@@ -189,7 +189,7 @@ class SpiNNaker(AbstractSpinnakerBase, pynn_control.BaseState):
         Used to bypass the dual level object.
 
         :return: the SpiNNaker object
-        :rtype: ~spynnaker8.spinnaker.SpiNNaker
+        :rtype: ~spynnaker.pyNN.SpiNNaker
         """
         return self
 
@@ -380,7 +380,6 @@ class SpiNNaker(AbstractSpinnakerBase, pynn_control.BaseState):
         :param str search_path: absolute search path for binaries
         """
         # pylint: disable=protected-access
-        moved_in_v7_warning("register_binary_search_path is now a View method")
         SpynnakerDataView.register_binary_search_path(search_path)
 
     def _execute_write_neo_metadata(self):
@@ -452,7 +451,7 @@ class SpiNNaker(AbstractSpinnakerBase, pynn_control.BaseState):
         """
         Runs, times and logs the DelaySupportAdder if required.
         """
-        name = get_config_str("Mapping", "delay_support_adder")
+        name = get_config_str_or_none("Mapping", "delay_support_adder")
         if name is None:
             return
         with FecTimer("DelaySupportAdder", TimerWork.OTHER):
