@@ -423,7 +423,9 @@ static void incoming_spike_callback_payload(uint key, uint payload) {
 
     in_spikes_add_spike(spike.pair);
 
+#if LOG_LEVEL >= LOG_DEBUG
     in_spikes_print_buffer();
+#endif
 }
 
 static inline void store_neuron_provenance(struct neuron_provenance *prov) {
