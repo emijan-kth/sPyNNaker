@@ -217,7 +217,6 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
     for (int16_t i = 0; i < num_neurons_in; ++i)
     {
         max_membrane_voltages[i] = 0.0;
-        max_source_indices[i] = UINT32_MAX;
     }
 
     spike_t spike;
@@ -272,7 +271,7 @@ static void timer_callback(UNUSED uint unused0, UNUSED uint unused1) {
     {
         uint32_t source_index = max_source_indices[neuron_id_in];
         
-        if (source_index != UINT32_MAX)
+        if (max_membrane_voltages[neuron_id_in] != 0.0)
         {
             // Process the spike with highest membrane voltage
             log_debug(
@@ -509,7 +508,7 @@ void c_main(void) {
     }
 
     // Initialise the incoming spike buffer
-    if (!in_spikes_initialize_spike_buffer(8192)) {
+    if (!in_spikes_initialize_spike_buffer(4096)) {
         return;
     }
 

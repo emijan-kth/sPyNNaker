@@ -201,7 +201,7 @@ static spike_circular_buffer spike_circular_buffer_initialize(
     }
 
     spike_circular_buffer buffer = sark_alloc(1,
-	    sizeof(_spike_circular_buffer) + real_size * sizeof(uint32_t));
+	    sizeof(_spike_circular_buffer) + real_size * sizeof(BUFFER_ITEM_TYPE));
     if (buffer == NULL) {
 	return NULL;
     }
