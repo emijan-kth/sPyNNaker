@@ -17,6 +17,7 @@ BUILDS = synapse_expander \
          delay_extension \
          robot_motor_control \
 		 WTA \
+		 WTA_merge \
          neuron_only \
          synapse_only \
          neuron \

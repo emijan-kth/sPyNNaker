@@ -40,12 +40,13 @@ class WTA(AbstractPyNNNeuronModel):
     default_population_parameters = _population_parameters
 
     def __init__(
-            self):
+            self,
+            is_merge):
         """
         """
         super().__init__(WTAImpl(
             model_name="WTA",
-            binary="WTA.aplx"))
+            binary="WTA" + ("_merge" if is_merge else "") + ".aplx"))
 
     @overrides(AbstractPyNNNeuronModel.create_vertex,
                additional_arguments={"n_steps_per_timestep"})
