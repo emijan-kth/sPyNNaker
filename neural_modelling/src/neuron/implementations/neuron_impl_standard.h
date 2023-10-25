@@ -256,6 +256,15 @@ static void neuron_impl_do_timestep_update(
         // Loop however many times requested; do this in reverse for efficiency,
         // and because the index doesn't actually matter
         for (uint32_t i_step = n_steps_per_timestep; i_step > 0; i_step--) {
+#ifdef WTA
+            bool reset = synapse_types_get_reset_input(the_synapse_type);
+
+            if (reset)
+            {
+                log_debug("Neuron index %u: reset in response to reset input", neuron_index);
+                neuron_model_has_spiked(this_neuron);            
+            }
+#endif            
             // Get the voltage
             state_t soma_voltage = neuron_model_get_membrane_voltage(this_neuron);
 
@@ -331,7 +340,21 @@ static void neuron_impl_do_timestep_update(
                 neuron_recording_record_bit(SPIKE_RECORDING_BITFIELD, neuron_index);
 
                 // Send the spike
+#ifdef WTA
+                log_debug("Neuron index %u: spike with payload: %12.6k", neuron_index, result);
+                
+                union
+                {
+                    state_t state;
+                    uint32_t uint;
+                } converted_result;
+
+                converted_result.state = result;
+
+                send_spike_payload(timer_count, time, neuron_index, converted_result.uint);
+#else
                 send_spike(timer_count, time, neuron_index);
+#endif
             }
 
             // Shape the existing input according to the included rule

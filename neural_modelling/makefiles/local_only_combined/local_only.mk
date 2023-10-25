@@ -85,54 +85,57 @@ ifndef NEURON_IMPL_H
 else
     NEURON_IMPL := $(call strip_source_dirs,$(NEURON_IMPL_H))
     NEURON_IMPL_H := $(call replace_source_dirs,$(NEURON_IMPL_H))
+    NEURON_IMPL_STANDARD := neuron/implementations/neuron_impl_standard.h
     NEURON_INCLUDES := -include $(NEURON_IMPL_H)
+    ifeq ($(NEURON_IMPL), $(NEURON_IMPL_STANDARD))
         
-	# Check required inputs and point them to modified sources
-	ifndef ADDITIONAL_INPUT_H
-		ADDITIONAL_INPUT_H = $(MODIFIED_DIR)neuron/additional_inputs/additional_input_none_impl.h
-	else
-		ADDITIONAL_INPUT_H := $(call replace_source_dirs,$(ADDITIONAL_INPUT_H))
-	endif
-	
-	ifndef NEURON_MODEL_H
-		$(error NEURON_MODEL_H is not set.  Please select a neuron model header file)
-	else
-		NEURON_MODEL_H := $(call replace_source_dirs,$(NEURON_MODEL_H))
-	endif
-	
-	ifndef INPUT_TYPE_H
-		$(error INPUT_TYPE_H is not set.  Please select an input type header file)
-	else
-		INPUT_TYPE_H := $(call replace_source_dirs,$(INPUT_TYPE_H))
-	endif
-	
-	ifndef THRESHOLD_TYPE_H
-		$(error THRESHOLD_TYPE_H is not set.  Please select a threshold type header file)
-	else
-		THRESHOLD_TYPE_H := $(call replace_source_dirs,$(THRESHOLD_TYPE_H))
-	endif
-	
-	ifndef SYNAPSE_TYPE_H
-		$(error SYNAPSE_TYPE_H is not set.  Please select a synapse type header file)
-	else
-		SYNAPSE_TYPE_H := $(call replace_source_dirs,$(SYNAPSE_TYPE_H))
-	endif
-	
-	ifndef CURRENT_SOURCE_H
-		CURRENT_SOURCE_H = $(MODIFIED_DIR)neuron/current_sources/current_source_impl.h
-	else
-		CURRENT_SOURCE_H := $(call replace_source_dirs,$(CURRENT_SOURCE_H))
-	endif
-	
-	NEURON_INCLUDE_FILES := \
-		$(NEURON_MODEL_H) \
-		$(SYNAPSE_TYPE_H) \
-		$(INPUT_TYPE_H) \
-		$(THRESHOLD_TYPE_H) \
-		$(ADDITIONAL_INPUT_H) \
-		$(CURRENT_SOURCE_H) \
-		$(NEURON_IMPL_H) 
-	NEURON_INCLUDES := $(NEURON_INCLUDE_FILES:%=-include %)
+        # Check required inputs and point them to modified sources
+		ifndef ADDITIONAL_INPUT_H
+		    ADDITIONAL_INPUT_H = $(MODIFIED_DIR)neuron/additional_inputs/additional_input_none_impl.h
+		else
+		    ADDITIONAL_INPUT_H := $(call replace_source_dirs,$(ADDITIONAL_INPUT_H))
+		endif
+		
+		ifndef NEURON_MODEL_H
+		    $(error NEURON_MODEL_H is not set.  Please select a neuron model header file)
+		else
+		    NEURON_MODEL_H := $(call replace_source_dirs,$(NEURON_MODEL_H))
+		endif
+		
+		ifndef INPUT_TYPE_H
+		    $(error INPUT_TYPE_H is not set.  Please select an input type header file)
+		else
+		    INPUT_TYPE_H := $(call replace_source_dirs,$(INPUT_TYPE_H))
+		endif
+		
+		ifndef THRESHOLD_TYPE_H
+		    $(error THRESHOLD_TYPE_H is not set.  Please select a threshold type header file)
+		else
+		    THRESHOLD_TYPE_H := $(call replace_source_dirs,$(THRESHOLD_TYPE_H))
+		endif
+		
+		ifndef SYNAPSE_TYPE_H
+		    $(error SYNAPSE_TYPE_H is not set.  Please select a synapse type header file)
+		else
+		    SYNAPSE_TYPE_H := $(call replace_source_dirs,$(SYNAPSE_TYPE_H))
+		endif
+		
+		ifndef CURRENT_SOURCE_H
+		    CURRENT_SOURCE_H = $(MODIFIED_DIR)neuron/current_sources/current_source_impl.h
+		else
+		    CURRENT_SOURCE_H := $(call replace_source_dirs,$(CURRENT_SOURCE_H))
+		endif
+		
+		NEURON_INCLUDE_FILES := \
+	      $(NEURON_MODEL_H) \
+	      $(SYNAPSE_TYPE_H) \
+	      $(INPUT_TYPE_H) \
+	      $(THRESHOLD_TYPE_H) \
+	      $(ADDITIONAL_INPUT_H) \
+	      $(CURRENT_SOURCE_H) \
+	      $(NEURON_IMPL_H) 
+		NEURON_INCLUDES := $(NEURON_INCLUDE_FILES:%=-include %)
+    endif
 
 	ifndef LOCAL_ONLY_IMPL_H
 		LOCAL_ONLY_IMPL_H := neuron/local_only/local_only_impl.h
@@ -182,7 +185,7 @@ $(BUILD_DIR)neuron/spike_processing_local_only.o: $(MODIFIED_DIR)neuron/spike_pr
 $(BUILD_DIR)neuron/neuron.o: $(MODIFIED_DIR)neuron/neuron.c
 	# neuron.o
 	-@mkdir -p $(dir $@)
-	$(CC) -DLOG_LEVEL=$(NEURON_DEBUG) $(CFLAGS) $(NEURON_INCLUDES) -o $@ $<
+	$(CC) -DLOG_LEVEL=$(NEURON_DEBUG) $(NEURON_FLAGS:%=-D%) $(CFLAGS) $(NEURON_INCLUDES) -o $@ $<
 
 $(LOCAL_ONLY_IMPL:%.c=$(BUILD_DIR)%.o): $(MODIFIED_DIR)$(LOCAL_ONLY_IMPL)
 	-@mkdir -p $(dir $@)
