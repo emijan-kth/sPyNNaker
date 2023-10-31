@@ -1107,7 +1107,7 @@ class AbstractPopulationVertex(
         :rtype: list(int)
         """
         weight_scale = self.__neuron_impl.get_global_weight_scale()
-        if len(ring_buffer_shifts) == 3:
+        if len(ring_buffer_shifts) >= 3:
             ring_buffer_shifts[2] = 15
             
         return numpy.array([
