@@ -116,12 +116,12 @@ static inline void neuron_model_save_state(neuron_t *state, neuron_params_t *par
 
 typedef UFRACT decay_t;
 
-static inline s1615 decay_s1615_2(s1615 x, decay_t decay)
+static inline s1615 decay_s1615_s1615(s1615 x, s1615 decay)
 {
     int64_t s = (int64_t) bitsk(x);
-    int64_t u = (int64_t) bitsulr(decay);
+    int64_t u = (int64_t) bitsk(decay);
 
-    return kbits((int_k_t) ((s * u) >> 32));
+    return kbits((int_k_t) ((s * u) >> 15));
 }
 
 //! \brief simple Leaky I&F ODE
@@ -133,9 +133,9 @@ static inline void lif_neuron_closed_form(
 
     REAL decay = 1.0ulr - neuron->ts_over_tau;
 
-    REAL V = decay_s1615_2(V_prev, decay);
+    REAL V = decay_s1615_s1615(V_prev, decay);
 
-    neuron->V_membrane = V + decay_s1615_2(input_this_timestep, neuron->ts_over_tau);
+    neuron->V_membrane = V + decay_s1615_s1615(input_this_timestep, neuron->ts_over_tau);
 
     // update membrane voltage
     log_debug("v_prev = = %11.4k", V_prev);
@@ -232,6 +232,7 @@ static inline void neuron_model_print_parameters(const neuron_t *neuron) {
 
     log_info("I offset      = %11.4k nA", neuron->I_offset);
     log_info("R membrane    = %11.4k Mohm", neuron->R_membrane);
+    log_info("ts/tau        = %11.4k [.]", neuron->ts_over_tau);
 
     log_info("T refract     = %u timesteps", neuron->T_refract);
 }
